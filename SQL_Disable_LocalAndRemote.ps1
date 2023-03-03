@@ -1,4 +1,4 @@
-﻿Clear-Host
+Clear-Host
 $instance1 = "SQL Server (MSSQLSERVER)"
 $instance2 = "SQL Server Agent (MSSQLSERVER)"
 $instance3 = "World Wide Web Publishing Service"
@@ -13,7 +13,7 @@ $service2.ChangeStartMode("Disabled")
 Stop-Service -DisplayName $instance3 -Force
 $service3 = Get-WmiObject -Class Win32_Service -Filter "DisplayName='$instance3'"
 $service3.ChangeStartMode("Disabled")
-Write-Host "The services '$instance1','$instance2' and $instance3 on '$computerName' have been stopped and set to start mode 'Disabled'"
+Write-Host "The services '$instance1','$instance2' and $instance3 on '$computerName' have been stopped"
 
 $secondaryServer = 'S' + $computerName.Substring(1)
 $serviceName1 = "MSSQLSERVER"
@@ -27,4 +27,4 @@ Invoke-Command -ComputerName $secondaryServer -ScriptBlock {
     Stop-Service -Name $using:serviceName3 -Force
     Set-Service -Name $using:serviceName3 -StartupType Disabled
 }
-Write-Host "The services '$instance1','$instance2' and $instance3 on computer '$secondaryServer' have been stopped and set to start mode 'Disabled'"
+Write-Host "The services '$instance1','$instance2' and $instance3 on computer '$secondaryServer' have been stopped"
