@@ -1,4 +1,5 @@
-# written by DHRUB BHARALI and modified by erez schwartz (https://powershellguru.com/)
+# written by DHRUB BHARALI and modified by erez schwartz 3.3.23 (https://powershellguru.com/)
+Clear-Host
 
 Function Get-ComInfo {
 param(
@@ -27,4 +28,10 @@ $rv
 }
 
 ############ Provide path in get content ##############
-Get-Content "\\myserver\PowerShell\Computers.txt" | ForEach-Object { Get-ComInfo -computers $_}
+Get-Content "\\myserver\PowerShell\Computers.txt" | ForEach-Object {
+    $computer = $_
+    Get-ComInfo -computers $computer | ForEach-Object {
+        $_ | Add-Member -MemberType NoteProperty -Name Computer -Value $computer -Force
+        $_
+    } | Tee-Object -FilePath "C:\Temp\ServerReboot_Report.txt" -Append
+}
