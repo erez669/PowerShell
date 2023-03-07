@@ -1,6 +1,6 @@
 ﻿Clear-Host
-$workstations = Get-Content \\10.251.10.251\supergsrv\HdMatte\PowerShell\Computers.txt
-$outputFile = 'C:\Temp\Retalix_Version.csv'
+$workstations = Get-Content \\myserver\PowerShell\Computers.txt
+$outputFile = 'C:\Temp\NCR_Version.csv'
 $paths = @(
     'c:\retalix\wingpos\GroceryWinPos.exe',
     'c:\Program Files (x86)\Retalix\SCO.NET\App\sco.exe',
