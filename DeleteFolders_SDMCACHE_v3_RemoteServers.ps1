@@ -2,9 +2,9 @@
 
 $ErrorActionPreference = "silentlycontinue"
 
-$folderlist = @("C$\Program Files (x86)\LANDesk\LDClient\sdmcache","C$\Program Files\LANDesk\LDClient\sdmcache","D$\sdmcache","D$\supersol")
+$folderlist = @("C$\Program Files (x86)\LANDesk\LDClient\sdmcache","C$\Program Files\LANDesk\LDClient\sdmcache","D$\sdmcache")
 
-$computerlist = Get-Content -Path "\\sysinstalls\supergsrv\HdMatte\PowerShell\Servers.txt"
+$computerlist = Get-Content -Path "\\myserver\PowerShell\Servers.txt"
 
 foreach ($file in $folderlist){
     foreach ($computer in $computerlist){
