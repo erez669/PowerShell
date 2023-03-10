@@ -10,7 +10,7 @@ $Folders = @(
 
 Foreach ($Folder in $Folders) {
     Write-Host -ForegroundColor Yellow "Deleting Folder $Folder on $env:computername"
-    Get-ChildItem -Path $Folder -Recurse -Verbose | Remove-Item -Recurse -Force
+    Get-ChildItem -Path $Folder -Recurse -Verbose | Remove-Item -Recurse -Force -Verbose
 }
 
 # Delete empty folders and subfolders
