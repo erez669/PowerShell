@@ -1,3 +1,5 @@
+                                #Written By Erez Schwartz 11.03.23
+
 If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 
 {   
@@ -10,7 +12,7 @@ Clear-Host
 
 $ErrorActionPreference = "SilentlyContinue"
 
-$FontFolder = "\\10.251.10.251\supergsrv\HdMatte\fonts-extra\Fonts"
+$FontFolder = "\\myserver\Fonts"
 $FontItem = Get-Item -Path $FontFolder
 $FontList = Get-ChildItem -Path "$FontItem\*" -Include ('*.fon','*.otf','*.ttc','*.ttf')
 
