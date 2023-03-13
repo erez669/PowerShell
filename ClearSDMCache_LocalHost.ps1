@@ -16,16 +16,19 @@ Foreach ($Folder in $Folders) {
 }
 
 # Delete empty folders and subfolders
-Foreach ($Folder in $Folders) {
-    Get-ChildItem $Folder -Directory -Recurse -Verbose `
+foreach ($Folder in $Folders) {
+    Get-ChildItem $Folder -Directory -Verbose `
         | Where-Object { $_.FullName -in $Folders } `
-        | Sort-Object { $_.FullName.Length } -Descending `
-        | Where-Object { $_.GetFiles().Count -eq 0 } `
         | ForEach-Object {
-            if ($_.GetDirectories().Count -eq 0) { 
-                Write-Host "Removing $($_.FullName)"
-                $_.Delete()
-            }
+            Get-ChildItem $_.FullName -Directory -Verbose `
+                | Sort-Object { $_.FullName.Length } -Descending `
+                | Where-Object { $_.GetFiles().Count -eq 0 } `
+                | ForEach-Object {
+                    if ($_.GetDirectories().Count -eq 0) { 
+                        Write-Host "Removing $($_.FullName)"
+                        $_.Delete()
+                    }
+                }
         }
 }
 
