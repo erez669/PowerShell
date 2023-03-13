@@ -1,11 +1,13 @@
 Clear-Host
 
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Stop"
 
 $Folders = @(
     "D:\sdmcache",
+    "D:\IvantIShare\drivers",
     "C:\Program Files (x86)\Landesk\ldclient\sdmcache",
-    "C:\Program Files\Landesk\ldclient\sdmcache"
+    "C:\Program Files\Landesk\ldclient\sdmcache",
+    "D:\supersol"
 )
 
 Foreach ($Folder in $Folders) {
@@ -16,6 +18,7 @@ Foreach ($Folder in $Folders) {
 # Delete empty folders and subfolders
 Foreach ($Folder in $Folders) {
     Get-ChildItem $Folder -Directory -Recurse -Verbose `
+        | Where-Object { $_.FullName -in $Folders } `
         | Sort-Object { $_.FullName.Length } -Descending `
         | Where-Object { $_.GetFiles().Count -eq 0 } `
         | ForEach-Object {
@@ -26,7 +29,7 @@ Foreach ($Folder in $Folders) {
         }
 }
 
-$ExcludeFolder = "D:\folder"
+$ExcludeFolder = "D:\supersol"
 
 Foreach ($Folder in $Folders) {
     if ($Folder -ne $ExcludeFolder) {
