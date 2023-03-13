@@ -7,7 +7,7 @@ $Folders = @(
     "D:\IvantIShare\drivers",
     "C:\Program Files (x86)\Landesk\ldclient\sdmcache",
     "C:\Program Files\Landesk\ldclient\sdmcache",
-    "D:\supersol"
+    "D:\folder"
 )
 
 Foreach ($Folder in $Folders) {
@@ -29,7 +29,7 @@ Foreach ($Folder in $Folders) {
         }
 }
 
-$ExcludeFolder = "D:\supersol"
+$ExcludeFolder = "D:\folder"
 
 Foreach ($Folder in $Folders) {
     if ($Folder -ne $ExcludeFolder) {
