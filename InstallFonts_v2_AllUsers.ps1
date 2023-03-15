@@ -10,7 +10,7 @@ Break
 
 Clear-Host
 
-$ErrorActionPreference = "SilentlyContinue"
+# $ErrorActionPreference = "SilentlyContinue"
 
 $FontFolder = "\\myserver\Fonts"
 $FontItem = Get-Item -Path $FontFolder
