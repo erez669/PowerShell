@@ -1,7 +1,6 @@
 # Extract Event Viewer Logs v2.1
 # PowerShell script to export event logs from Event Viewer to a folder named "EventViewerExport" on the Desktop
 # Made by Shomron Joseph David - Dangot
-# LinkedIn: https://www.linkedin.com/in/shomrondavid/
 # Tested on Windows Server 2012 R2 - Windows 10 - Windows 11 - Windows Server 2019 - Windows Server 2022
 
 $ExportPath = "$env:USERPROFILE\Desktop\EventViewerExport"
