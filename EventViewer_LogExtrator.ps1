@@ -1,4 +1,4 @@
-# Extract Event Viewer Logs 2.1
+# Extract Event Viewer Logs v2.1
 # PowerShell script to export event logs from Event Viewer to a folder named "EventViewerExport" on the Desktop
 # Made by Shomron Joseph David - Dangot
 # LinkedIn: https://www.linkedin.com/in/shomrondavid/
