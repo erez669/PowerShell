@@ -1,6 +1,4 @@
-﻿Clear-Host
-
-$scriptBlock = {
+﻿$scriptBlock = {
     param($CN)
 
     Write-Host "Computer Name: $CN"  # Outputs the computer name
