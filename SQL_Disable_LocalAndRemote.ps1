@@ -1,34 +1,52 @@
+# Clear console
 Clear-Host
-$instance1 = "SQL Server (MSSQLSERVER)"
-$instance2 = "SQL Server Agent (MSSQLSERVER)"
-$instance3 = "World Wide Web Publishing Service"
+
+# Define services and their names
+$services = @{
+    "SQL Server (MSSQLSERVER)" = "MSSQLSERVER"
+    "SQL Server Agent (MSSQLSERVER)" = "SQLSERVERAGENT"
+    "SQL Server CEIP service (MSSQLSERVER)" = "SQLTELEMETRY"
+    "World Wide Web Publishing Service" = "W3SVC"
+    "SQL Full-text Filter Daemon Launcher (MSSQLSERVER)" = "MSSQLFDLauncher"
+    "SQL Server VSS Writer" = "SQLWriter"
+    "SQL Active Directory Helper Service" = "MSSQLServerADHelper100"
+}
+
+# Get current computer name
 $computerName = $env:COMPUTERNAME
 
-$serviceName1 = "MSSQLSERVER"
-$serviceName2 = "SQLSERVERAGENT"
-$serviceName3 = "W3SVC"
+# Stop, disable and set recovery options for each service
+foreach ($displayName in $services.Keys) {
+    $serviceName = $services[$displayName]
 
-Stop-Service -DisplayName $instance1 -Force
-$service1 = Get-WmiObject -Class Win32_Service -Filter "DisplayName='$instance1'"
-$service1.ChangeStartMode("Disabled")
-Stop-Service -DisplayName $instance2 -Force
-$service2 = Get-WmiObject -Class Win32_Service -Filter "DisplayName='$instance2'"
-$service2.ChangeStartMode("Disabled")
-Stop-Service -DisplayName $instance3 -Force
-$service3 = Get-WmiObject -Class Win32_Service -Filter "DisplayName='$instance3'"
-$service3.ChangeStartMode("Disabled")
-Write-Host "The services '$instance1','$instance2' and $instance3' on '$computerName' have been stopped"
+    if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+        Stop-Service -DisplayName $displayName -Force -Verbose
+        $service = Get-WmiObject -Class Win32_Service -Filter "DisplayName='$displayName'"
+        $service.ChangeStartMode("Disabled")
 
+        # Change recovery options to 'take no action'
+        & sc.exe failure $serviceName reset= 0 actions= none/0/none/0/none/0
+    }
+}
+
+Write-Host "The services '$($services.Keys -join ', ')' on '$computerName' have been stopped"
+
+# Define secondary server name
 $secondaryServer = 'S' + $computerName.Substring(1)
 
-Invoke-Command -ComputerName $secondaryServer -ArgumentList $serviceName1, $serviceName2, $serviceName3 -ScriptBlock {
-    param($serviceName1, $serviceName2, $serviceName3)
+# Stop, disable and set recovery options for services on secondary server
+Invoke-Command -ComputerName $secondaryServer -ArgumentList $services.Values -ScriptBlock {
+    param($serviceNames)
 
-    Stop-Service -Name $serviceName1 -Force
-    Set-Service -Name $serviceName1 -StartupType Disabled
-    Stop-Service -Name $serviceName2 -Force
-    Set-Service -Name $serviceName2 -StartupType Disabled
-    Stop-Service -Name $serviceName3 -Force
-    Set-Service -Name $serviceName3 -StartupType Disabled
+    foreach ($serviceName in $serviceNames) {
+        if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+            Stop-Service -Name $serviceName -Force -Verbose
+            Set-Service -Name $serviceName -StartupType Disabled
+
+            # Change recovery options to 'take no action'
+            & sc.exe failure $serviceName reset= 0 actions= none/0/none/0/none/0
+        }
+    }
 }
-Write-Host "The services '$instance1','$instance2' and $instance3' on computer '$secondaryServer' have been stopped"
+
+Write-Host "The services '$($services.Keys -join ', ')' on computer '$secondaryServer' have been stopped"
