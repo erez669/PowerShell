@@ -1,6 +1,6 @@
 ﻿Clear-Host
 
-$csv = Import-Csv -Path 'C:\Users\erezsc\Desktop\CSS.csv'
+$csv = Import-Csv -Path 'C:\Users\erezsc\Desktop\IPAddress.csv'
 
 foreach ($row in $csv) {
     $ipParts = $row.IPAddress -split '\.'
@@ -9,4 +9,4 @@ foreach ($row in $csv) {
     $row.IPAddress = $newIp
 }
 
-$csv | Export-Csv 'C:\Users\erezsc\Desktop\CSS_Fixed.csv' -NoTypeInformation
+$csv | Export-Csv 'C:\Users\erezsc\Desktop\IPAddress_Fixed.csv' -NoTypeInformation
