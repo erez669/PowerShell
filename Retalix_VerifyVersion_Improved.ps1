@@ -1,4 +1,4 @@
-﻿Clear-Host
+Clear-Host
 
 # Get the hostname
 $hostname = $env:COMPUTERNAME
