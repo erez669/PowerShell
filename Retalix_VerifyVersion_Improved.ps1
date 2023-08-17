@@ -41,7 +41,7 @@ else {
 }
 
 # Expected version 
-$expectedVersion = "6.27"  
+$expectedVersion = $args[0]
 
 # Loop through each path
 foreach ($path in $paths) {
