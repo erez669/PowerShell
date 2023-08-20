@@ -28,7 +28,7 @@ foreach ($groupMembership in $group.Properties.memberof) {
 }
 
 # Target groups
-$targetGroups = @("Net_Supersol_New_Pharm", "Net_SuperSol_Good_Market", "Net_Supersol_Express", "Net_SuperSol_yesh", "Net_SuperSol_yesh_hessed", "Net_SuperSol_Shaarevacha")  
+$targetGroups = @("Net_Supersol_New_Pharm", "Net_SuperSol_Good_Market", "Net_Supersol_Express", "Net_SuperSol_yesh", "Net_SuperSol_yesh_hessed")  
 
 # Check if computer is in target group
 $inTargetGroup = $false
