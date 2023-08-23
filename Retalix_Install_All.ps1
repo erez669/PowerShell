@@ -52,5 +52,5 @@ if ($isServer) {
    & "$PSScriptRoot\$batchFile" $batchArgs *>&1 | Out-File -FilePath $outputFile1 -Append # Pass args for server
 }
 else {
-  & "$PSScriptRoot\$batchFile" *>&1 | Out-File -FilePath $outputFile2 -Append # No args for non-server
+   & "$PSScriptRoot\$batchFile" *>&1 | Out-File -FilePath $outputFile2 -Append # No args for non-server
 }
