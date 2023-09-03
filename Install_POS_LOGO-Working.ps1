@@ -1,8 +1,8 @@
 $VerbosePreference = 'Continue'
 
-# Set hostname and initialize $logo2
+# Set hostname and initialize variables to $null
 $hostname = $env:COMPUTERNAME
-$logo2 = $null  # Initialize to null
+$logo2 = $null
 $xmlPath = $null 
 $backupPath = $null
 
