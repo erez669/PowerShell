@@ -220,7 +220,7 @@ if ($executable -ne $null) {
                     # Delete the existing backup file if it exists
                     $backupPath = "$xmlPath.bak"
                     if (Test-Path $backupPath) {
-                    Remove-Item $backupPath -Force -Verbose
+                    [System.IO.File]::Delete($backupPath)
                     }
 
                     # Create the backup by copying the XML file
@@ -276,7 +276,7 @@ if (Test-Path $xmlPath) {
         Write-Verbose "Found POSPrinter node."
         $backupPath = "$xmlPath.bak"
         if (Test-Path $backupPath) {
-        Remove-Item $backupPath -Force -Verbose
+        [System.IO.File]::Delete($backupPath)
     }
 
         # Create the backup by copying the XML file
