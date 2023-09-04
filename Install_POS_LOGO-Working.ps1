@@ -34,20 +34,20 @@ foreach ($groupDN in $branchGroup.memberof) {
     $group = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domain/$groupDN")
     switch ($group.Name[0].ToUpper())
     {
-        "NET_SUPERSOL_DEAL" { $exitCode = 2; break }
-        "NET_SUPERSOL_MINE" { $exitCode = 3; break }
-        "NET_SUPERSOL_YESH_HESSED" { $exitCode = 4; break }
-        "NET_SUPERSOL_YESH" { $exitCode = 5; break }
-        "NET_SUPERSOL_EXPRESS" { $exitCode = 6; break }
-        "NET_SUPERSOL_SHAAREVACHA" { $exitCode = 7; break }
-        "NET_ORGANIC_MARKET" { $exitCode = 8; break }
-        "NET_SUPERSOL_NEW_PHARM" { $exitCode = 9; break }
-        "NET_SUPERSOL_GIDRON" { $exitCode = 10; break }
-        "NET_SUPERSOL_CASH_CARRY" { $exitCode = 11; break }
-        "NET_SUPERSOL_ONLINE" { $exitCode = 12; break }
-        "NET_BELA_STORE" { $exitCode = 13; break }
-        "NET_SUPERSOL_TRIGO" { $exitCode = 14; break }
-        "NET_SUPERSOL_GOOD_MARKET" { $exitCode = 15; break }
+        "NET_SUPERSOL_DEAL"          { $exitCode = 2; break }
+        "NET_SUPERSOL_MINE"          { $exitCode = 3; break }
+        "NET_SUPERSOL_YESH_HESSED"   { $exitCode = 4; break }
+        "NET_SUPERSOL_YESH"          { $exitCode = 5; break }
+        "NET_SUPERSOL_EXPRESS"       { $exitCode = 6; break }
+        "NET_SUPERSOL_SHAAREVACHA"   { $exitCode = 7; break }
+        "NET_ORGANIC_MARKET"         { $exitCode = 8; break }
+        "NET_SUPERSOL_NEW_PHARM"     { $exitCode = 9; break }
+        "NET_SUPERSOL_GIDRON"        { $exitCode = 10; break }
+        "NET_SUPERSOL_CASH_CARRY"    { $exitCode = 11; break }
+        "NET_SUPERSOL_ONLINE"        { $exitCode = 12; break }
+        "NET_BELA_STORE"             { $exitCode = 13; break }
+        "NET_SUPERSOL_TRIGO"         { $exitCode = 14; break }
+        "NET_SUPERSOL_GOOD_MARKET"   { $exitCode = 15; break }
     }
 }
 
@@ -132,9 +132,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     }
 
     if ($versionMajorMinor -eq "10.0" -or $versionMajorMinor -eq "6.1") {
-        Stop-Process -Name "sco" -Force -ErrorAction SilentlyContinue -Verbose
-        Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue -Verbose
-
+        
         switch ($logo2) {
             "NewPharmsmall"  { $dir = "NEWPHARM" }
             "RevahaSmall"    { $dir = "Shaarey_Revacha" }
@@ -305,3 +303,5 @@ New BitmapFile value: $newBitmapValue
 }
 
 }
+
+exit 0
