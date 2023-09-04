@@ -1,3 +1,11 @@
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+
+{   
+$arguments = "& '" + $myinvocation.mycommand.definition + "'"
+Start-Process powershell -Verb runAs -ArgumentList $arguments
+Break
+}
+
 $VerbosePreference = 'Continue'
 
 # Set hostname and initialize variables to $null
@@ -204,7 +212,7 @@ if ($executable -ne $null) {
         $xmlPath = "C:\retalix\wingpos\Files\devices\EpsonOPOSConfig.xml"
         if (Test-Path $xmlPath) {
             [xml]$content = Get-Content "C:\retalix\wingpos\Files\devices\EpsonOPOSConfig.xml"
-            $bitmapNode = $content.SelectSingleNode("//POSPrinter/@BitmapFile") -or $content.SelectSingleNode("//Printer/@BitmapFile")
+            $bitmapNode = $content.SelectSingleNode("//POSDeviceList/POSPrinter") -or $content.SelectSingleNode("//Printer/@BitmapFile")
             if ($bitmapNode -ne $null) {
                 $tokens = ($bitmapNode.Value -split '\.')[6]
                 $bmpPath = "C:\Retalix\WinGPOS\files\Images\Printing\$tokens.bmp"
@@ -263,7 +271,7 @@ if ($content -eq $null) {
 # Check if XML file exists
 if (Test-Path $xmlPath) {
     # Existing logic to find the POSPrinter node
-    $printerNode = $content.SelectSingleNode("//POSPrinter")
+    $printerNode = $content.SelectSingleNode("//POSDeviceList/POSPrinter")
     if ($printerNode -ne $null) {
         Write-Verbose "Found POSPrinter node."
         $backupPath = "$xmlPath.bak"
