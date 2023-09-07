@@ -1,4 +1,4 @@
-﻿If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
   Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
   Exit
 }
@@ -14,9 +14,16 @@ $progFiles = if ($arch) { 'C:\Program Files (x86)' } else { 'C:\Program Files' }
 # Concatenate the path
 $taskPath = $progFiles + '\LANDesk\LDClient\PolicySync.exe'
 
-# Create the scheduled task
-SCHTASKS /Delete /TN "LANDESK PolicySync" /F
-SCHTASKS /Create /TN "LANDESK PolicySync" /TR "'$taskPath'" /SC HOURLY /MO 3 /RU "NT AUTHORITY\SYSTEM"
+# Check if the task exists
+$taskExist = SCHTASKS /Query /TN "LANDESK PolicySync"
+
+# Delete the task if it exists
+if ($taskExist -like "*LANDESK PolicySync*") {
+    SCHTASKS /Delete /TN "LANDESK PolicySync" /F
+}
+
+# Create the task
+SCHTASKS /Create /TN "LANDESK PolicySync" /TR "'$taskPath'" /SC HOURLY /ST 02:00 /RU "NT AUTHORITY\SYSTEM" /MO 2
 
 # Run the task immediately
 # SCHTASKS /Run /TN "LANDESK PolicySync"
