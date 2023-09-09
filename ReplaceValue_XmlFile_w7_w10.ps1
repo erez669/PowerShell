@@ -56,26 +56,28 @@ if ($computerName -like '*SCO*') {
 Write-Host "Updating config: $configPath"
 
 if (Test-Path $configPath) {
-  $text = Get-Content $configPath
-  $newText = @()
-
-  foreach ($line in $text) {
-    if ($line -match '<URL>http://(posnlb|plpossrv)\w*') {
-      if ($inTargetGroup) {
-        $newValue = "http://plpossrv$branchNumber"
-      } else {
-        $newValue = "http://posnlb$branchNumber"
-      }
-      $newLine = $line -replace 'http://(posnlb|plpossrv)\w*', $newValue
-      Write-Host "Replacing URL part with: $newValue"
+  $xmlDoc = New-Object System.Xml.XmlDocument
+  $xmlDoc.Load($configPath)
+  
+  $urlNode = $xmlDoc.SelectSingleNode('//URL')
+  
+  if ($urlNode -ne $null) {
+    if ($inTargetGroup) {
+      $newValue = "http://plpossrv$branchNumber"
     } else {
-      $newLine = $line
+      $newValue = "http://posnlb$branchNumber"
     }
-    $newText += $newLine
+    $staticPart = ".posprod.supersol.co.il:4444/wsgpos/Service.asmx"
+    $newUrl = "${newValue}${staticPart}"
+    $urlNode.InnerText = $newUrl
+    Write-Host "New URL: $newUrl"
   }
-
-  Set-Content $configPath -Value $newText
-
+  
+  $settings = New-Object System.Xml.XmlWriterSettings
+  $settings.Indent = $true
+  $writer = [System.Xml.XmlTextWriter]::Create($configPath, $settings)
+  $xmlDoc.Save($writer)
+  $writer.Close()
 } else {
   Write-Warning "Config file not found: $configPath"
 }
