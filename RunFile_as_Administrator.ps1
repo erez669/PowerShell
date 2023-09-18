@@ -1,8 +1,6 @@
 # Get the folder path of this script 
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-Clear-Host
-
 # Check if platform is x64
 if ([System.Environment]::Is64BitOperatingSystem) {
 
