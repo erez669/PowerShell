@@ -1,4 +1,3 @@
-﻿# Load Active Directory Module
 Import-Module ActiveDirectory
 Clear-Host
 Write-Host "`n"
