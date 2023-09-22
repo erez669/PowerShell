@@ -1,5 +1,9 @@
-﻿# Verbose output
-$VerbosePreference = 'Continue' 
+# Verbose output
+$VerbosePreference = 'Continue'
+
+# Start Script logging
+$timestamp = Get-Date -Format "dd_MM_yyyy" -Verbose
+Start-Transcript -Path C:\install\SQL_FailBack_$timestamp.txt -Verbose
 
 $today = Get-Date
 $firstDay = Get-Date -Day 1 
@@ -70,3 +74,6 @@ if ($today.DayOfWeek -eq 'Saturday' -and $today.Day -le $firstSaturday.Day) {
 }
 
 Write-Host "Script complete!"
+
+# End Script Logging
+Stop-Transcript -Verbose
