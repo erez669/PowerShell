@@ -23,7 +23,8 @@ Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue -Verbose
 Start-Sleep -Seconds 10 -Verbose
 
 # Run kupalogo.exe
-$scriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
+$scriptDir = (Get-Location).Path
+Write-Host "The script directory is: $scriptDir"
 Start-Process -FilePath "$scriptDir\kupalogo.exe" -NoNewWindow:$false -Wait:$false
 Write-Verbose "After kupalogo.exe"
 
@@ -66,7 +67,8 @@ $logo2 = $exitCode
 Write-Host "Logo2 is set to $logo2"
 
 # Get script's directory
-$scriptDir = Split-Path $script:MyInvocation.MyCommand.Path
+$scriptDir = (Get-Location).Path
+Write-Host "The script directory is: $scriptDir"
 
 # Map $exitCode to executable name
 Write-Host "Exit Code: $exitCode"
