@@ -38,11 +38,18 @@ $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://rootDse")
 $domain = $root.dnsHostName
 $branchGroup = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domain/cn=branch_$branch,ou=branch groups,ou=group objects,ou=OUs,dc=posprod,dc=supersol,dc=co,dc=il")
 
-# Loop through each group
+$branchGroup.memberof | ForEach-Object { $groupName = ($_ -split ',')[0] -replace 'CN=', ''}
+
+# Collect group names
+$collectedGroups = @()
 foreach ($groupDN in $branchGroup.memberof) {
-    $group = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domain/$groupDN")
-    switch ($group.Name[0].ToUpper())
-    {
+    $simpleGroupName = ($groupDN -split ',')[0] -replace 'CN=', ''
+    $collectedGroups += $simpleGroupName.ToUpper()
+}
+
+# Loop through collected group names to set $exitCode
+foreach ($groupName in $collectedGroups) {
+    switch ($groupName) {
         "NET_SUPERSOL_DEAL"          { $exitCode = 2; break }
         "NET_SUPERSOL_MINE"          { $exitCode = 3; break }
         "NET_SUPERSOL_YESH_HESSED"   { $exitCode = 4; break }
@@ -58,9 +65,12 @@ foreach ($groupDN in $branchGroup.memberof) {
         "NET_SUPERSOL_TRIGO"         { $exitCode = 14; break }
         "NET_SUPERSOL_GOOD_MARKET"   { $exitCode = 15; break }
     }
+
+    if ($exitCode) { break }  # Exit loop if $exitCode is set
 }
 
-Write-Host "Group Name: $($group.Name[0])"
+Write-Host "LDAP Group Name: $groupName"
+Write-Host "Exit Code: $exitCode"
 
 # Map $exitCode to $logo2 (Modify this mapping as needed)
 $logo2 = $exitCode
@@ -118,7 +128,6 @@ $exitCodeToFileMap = @{
 }
 
 # Fetch the filename based on exitCode
-Write-Host "Debug: Exit Code is $exitCode"
 $fileName = $exitCodeToFileMap[$exitCode]
 Write-Host "Debug: Filename is $fileName"
 $correctExeName = $exitCodeToSCOFileMap[$exitCode]
