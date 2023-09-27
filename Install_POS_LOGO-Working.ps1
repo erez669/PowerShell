@@ -222,12 +222,17 @@ if ($executable -ne $null) {
                     # Delete the existing backup file if it exists
                     $backupPath = "$xmlPath.bak"
                     if (Test-Path $backupPath) {
-                    [System.IO.File]::Delete($backupPath)
+                    Write-Host "Deleting existing backup at $backupPath."
+                    Remove-Item -Path $backupPath -Force -Verbose
                     }
 
                     # Create the backup by copying the XML file
-                    [System.IO.File]::Copy($xmlPath, $backupPath)
-                    Write-Verbose "Backup saved at $backupPath"
+                    try {
+                    [System.IO.File]::Copy($xmlPath, $backupPath, $true)
+                    Write-Host "Successfully created or overwritten the backup."
+                    } catch {
+                    Write-Host "Failed to create or overwrite backup: $_"
+                    }
 
                     Add-Content -Path "c:\logo.log" -Value "start Be_Logo.bat"
                     cmd.exe /c "copy Bela.bmp C:\Retalix\WinGPOS\files\Images\Printing\ /y"
@@ -278,12 +283,17 @@ if (Test-Path $xmlPath) {
         Write-Verbose "Found POSPrinter node."
         $backupPath = "$xmlPath.bak"
         if (Test-Path $backupPath) {
-        [System.IO.File]::Delete($backupPath)
-    }
+        Write-Host "Deleting existing backup at $backupPath."
+        Remove-Item -Path $backupPath -Force -Verbose
+        }
 
         # Create the backup by copying the XML file
-        [System.IO.File]::Copy($xmlPath, $backupPath)
-        Write-Verbose "Backup saved at $backupPath"
+        try {
+        [System.IO.File]::Copy($xmlPath, $backupPath, $true)
+        Write-Host "Successfully created or overwritten the backup."
+        } catch {
+        Write-Host "Failed to create or overwrite backup: $_"
+        }
 
         # Get the current BitmapFile value
         $currentBitmapValue = $printerNode.GetAttribute('BitmapFile')
