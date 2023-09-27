@@ -70,24 +70,36 @@ Write-Host "Logo2 is set to $logo2"
 $scriptDir = (Get-Location).Path
 Write-Host "The script directory is: $scriptDir"
 
-# Map $exitCode to executable name
-Write-Host "Exit Code: $exitCode"
-switch ($exitCode) {
-    2  { $executable = Join-Path $scriptDir "Screen_Shufersal.exe" }
-    3  { $executable = Join-Path $scriptDir "Shufersal_Mine.exe" }
-    4  { $executable = Join-Path $scriptDir "Screen_Yesh.exe" }
-    5  { $executable = Join-Path $scriptDir "Screen_Yesh.exe" }
-    6  { $executable = Join-Path $scriptDir "Express.exe" }
-    9  { $executable = Join-Path $scriptDir "Be.exe" }
-    11 { $executable = Join-Path $scriptDir "Screen_CashNCarry.exe" }
-    13 { $executable = Join-Path $scriptDir "Go to Bela logic" }
-    14 { $executable = Join-Path $scriptDir "Trigo.exe" }
-    15 { $executable = Join-Path $scriptDir "Screen_GoodMarket.exe" }
+# Mapping from exitCode to executable names for non-SCO/CSS
+$exitCodeToExeMap = @{
+    2  = "Screen_Shufersal.exe"
+    3  = "Shufersal_Mine.exe"
+    4  = "Screen_Yesh.exe"
+    5  = "Screen_Yesh.exe"
+    6  = "Express.exe"
+    9  = "Be.exe"
+    11 = "Screen_CashNCarry.exe"
+    13 = "Go to Bela logic"
+    14 = "Trigo.exe"
+    15 = "Screen_GoodMarket.exe"
     #... (Add other cases)
 }
 
-# Now print the executable
-Write-Host "Executable to run: $executable"
+# Mapping from logo2 to the correct exe names for SCO/CSS
+$exitCodeToSCOFileMap = @{
+    2 =  "Shufersal.exe"
+    3 =  "Shufersal.exe" 
+    4 =  "YESH_Hessed.exe"
+    5 =  "YESH_Bashchuna.exe"
+    6 =  "Shufersal.exe"
+    7 =  "Shufersal.exe"
+    9 =  "NEWPHARM.exe"
+    11 = "Shufersal.exe"
+    13 = "NEWPHARM.exe"
+    14 = "Shufersal.exe"
+    15 = "GoodMarket.exe"
+    16 = "Shufersal.exe"
+}
 
 # Mapping from exitCode to filename
 $exitCodeToFileMap = @{
@@ -106,7 +118,11 @@ $exitCodeToFileMap = @{
 }
 
 # Fetch the filename based on exitCode
+Write-Host "Debug: Exit Code is $exitCode"
 $fileName = $exitCodeToFileMap[$exitCode]
+Write-Host "Debug: Filename is $fileName"
+$correctExeName = $exitCodeToSCOFileMap[$exitCode]
+Write-Host "Filename inside SCO/CSS block: $correctExeName"
 
 $computerNameSuffix = $env:COMPUTERNAME.Substring($env:COMPUTERNAME.Length - 3).ToUpper()
 Write-Verbose "Before checking computerNameSuffix"
@@ -142,27 +158,27 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     }
 
     if ($versionMajorMinor -eq "10.0" -or $versionMajorMinor -eq "6.1") {
+                
         
-        switch ($logo2) {
-            "NewPharmsmall"  { $dir = "NEWPHARM" }
-            "RevahaSmall"    { $dir = "Shaarey_Revacha" }
-            "yeshhesedsmall" { $dir = "YESH_Hessed" }
-            "yeshlogosmall"  { $dir = "YESH_Bashchuna" }
-            "GoodMarket"     { $dir = "GoodMarket" }
+    if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
+        $correctExeName = $exitCodeToSCOFileMap[$exitCode]
+        } else {
+        $correctExeName = $exitCodeToExeMap[$logo2]
         }
 
-        # Set the full path to the executable based on $dir
-        $fullPathToDirExe = Join-Path $sfxPath "$dir.exe"
+        # Build the full path using the correct exe name
+        $fullPathToDirExe = Join-Path $sfxPath $correctExeName
         Write-Host "Checking executable path: $fullPathToDirExe"
 
-        # Check if the path exists
+        # Check if the path exists and execute
         if (Test-Path $fullPathToDirExe) {
-        Start-Process $fullPathToDirExe -NoNewWindow:$false -Wait:$false
-        Write-Host "Executable exists."
+            Start-Process $fullPathToDirExe -NoNewWindow:$false -Wait:$false
+            Write-Host "Executable exists."
         } else {
-        Write-Host "Executable not found at $fullPathToDirExe"
-        Write-Host "Executable doesn't exist."
+            Write-Host "Executable not found at $fullPathToDirExe"
+            Write-Host "Executable doesn't exist."
         }
+    }
 
 # Check if $env:logo2 is set
 if (-not $logo2 -or $logo2 -eq "") {
@@ -201,7 +217,6 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
         Write-Host "XML file not found at $xmlPath."
         exit 1
     }
-}
 
 } else {
 # Update the BitmapFile attribute based on $fileName
