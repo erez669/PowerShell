@@ -84,6 +84,20 @@ if ($oldValue -eq "true") {
     Write-Host "Changed EMV Active attribute from $oldValue to true"
 }
 
+# Update TowerLight node
+$towerLightNode = $xml.Devices.TowerLight
+if ($null -ne $towerLightNode) {
+    $towerLightNode.SetAttribute("Active", "false")
+    Write-Host "Changed TowerLight Active attribute to false"
+}
+
+# Update VideoRecognition node
+$videoRecognitionNode = $xml.Devices.VideoRecognition
+if ($null -ne $videoRecognitionNode) {
+    $videoRecognitionNode.SetAttribute("Active", "false")
+    Write-Host "Changed VideoRecognition Active attribute to false"
+}
+
 # Output success message after above check
 Write-Host "XML update completed successfully!"
 
