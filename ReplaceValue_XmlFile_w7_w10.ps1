@@ -41,6 +41,12 @@ foreach ($targetGroup in $targetGroups) {
 
 Write-Host "In target group: $inTargetGroup"
 
+$isPharmStore = $false
+if ($group.Properties.memberof -like "*Net_Supersol_New_Pharm*") {
+  Write-Host "BE Pharm store was detected."
+  $isPharmStore = $true
+}
+
 # Determine config path
 if ($computerName -like '*SCO*') {
   $configPath1 = 'c:\Program Files\Retalix\SCO.NET\App\sco.exe.config'
@@ -58,6 +64,15 @@ Write-Host "Updating config: $configPath"
 if (Test-Path $configPath) {
   $xmlDoc = New-Object System.Xml.XmlDocument
   $xmlDoc.Load($configPath)
+
+   if ($isPharmStore -and ($configPath -like "*GroceryWinPos.exe.config")) {
+    $targetNode = $xmlDoc.SelectSingleNode('//appSettings/add[@key="plasticbagplunumber"]')
+    if ($targetNode -ne $null) {
+      
+      # To delete (Uncomment below line to delete)
+      $targetNode.ParentNode.RemoveChild($targetNode)
+    }
+  }
   
   $urlNode = $xmlDoc.SelectSingleNode('//URL')
   
