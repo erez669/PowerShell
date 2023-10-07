@@ -166,33 +166,41 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     }
     }
 
-    if ($versionMajorMinor -eq "10.0" -or $versionMajorMinor -eq "6.1") {
-                
-        
-    if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
-        $correctExeName = $exitCodeToSCOFileMap[$exitCode]
-        } else {
-        $correctExeName = $exitCodeToExeMap[$logo2]
-        }
+# Determine correct executable based on the computer name suffix
+if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
+    $correctExeName = $exitCodeToSCOFileMap[$exitCode]
+} else {
+    $correctExeName = $exitCodeToExeMap[$exitCode]
+}
 
-        # Build the full path using the correct exe name
-        $fullPathToDirExe = Join-Path $sfxPath $correctExeName
-        Write-Host "Checking executable path: $fullPathToDirExe"
+# Initialize $sfxPath based on $versionMajorMinor and $computerNameSuffix
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition  # Get script location
+$version = (Get-WmiObject -Query "SELECT * FROM Win32_OperatingSystem").Version
+$versionMajorMinor = ($version -split "\.")[0..1] -join "."
 
-        # Check if the path exists and execute
-        if (Test-Path $fullPathToDirExe) {
-            Start-Process $fullPathToDirExe -NoNewWindow:$false -Wait:$false
-            Write-Host "Executable exists."
-        } else {
-            Write-Host "Executable not found at $fullPathToDirExe"
-            Write-Host "Executable doesn't exist."
-        }
+if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
+    if ($versionMajorMinor -eq "10.0") {
+        $sfxPath = Join-Path $scriptRoot "SCO_SFX_10"
+    } elseif ($versionMajorMinor -eq "6.1") {
+        $sfxPath = Join-Path $scriptRoot "SCO_SFX"
     }
+} else {
+    $sfxPath = $scriptRoot  # If non-SCO, the location is in the script root
+}
 
-# Check if $env:logo2 is set
-if (-not $logo2 -or $logo2 -eq "") {
-    Write-Host "Environment variable logo2 is not set. Exiting."
-    exit 1
+# Check if all variables are set before executing
+if ($sfxPath -and $correctExeName) {
+    $fullPathToDirExe = Join-Path $sfxPath $correctExeName
+    Write-Host "Checking executable path: $fullPathToDirExe"
+    
+    if (Test-Path $fullPathToDirExe) {
+        Start-Process $fullPathToDirExe -NoNewWindow:$false -Wait:$false
+        Write-Host "Executable exists."
+    } else {
+        Write-Host "Executable not found at $fullPathToDirExe"
+    }
+} else {
+    Write-Host "One or more variables for executable path are not set."
 }
 
 # Determine the XML path based on OS version and computer name suffix
