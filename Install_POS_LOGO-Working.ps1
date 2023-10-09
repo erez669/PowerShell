@@ -78,8 +78,8 @@ $logo2 = $exitCode
 Write-Host "Logo2 is set to $logo2"
 
 # Get script's directory
-$scriptDir = (Get-Location).Path
-Write-Host "The script directory is: $scriptDir"
+# $scriptDir = (Get-Location).Path
+# Write-Host "The script directory is: $scriptDir"
 
 # Mapping from exitCode to executable names for non-SCO/CSS
 $exitCodeToExeMap = @{
@@ -142,7 +142,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $architecture = (Get-WmiObject -Query "SELECT * FROM Win32_Processor").AddressWidth
     Write-Verbose "OS version is $version"
     
-    # $scriptRoot = [System.IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Definition) # Get script location
+    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition  # Get script location
     # $dir = "Shufersal"
 
     $versionMajorMinor = ($version -split "\.")[0..1] -join "."
