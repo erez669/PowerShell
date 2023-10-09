@@ -172,7 +172,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $correctExeName = $exitCodeToSCOFileMap[$exitCode]
     Write-Verbose "Determined executable to run (SCO/CSS): $correctExeName"
 } else {
-    $correctExeName = $exitCodeToExeMap[$exitCode]
+    $executable = $exitCodeToExeMap[$exitCode]
     Write-Verbose "Determined executable to run: $correctExeName"
 }
 
