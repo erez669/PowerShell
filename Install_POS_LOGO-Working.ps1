@@ -173,7 +173,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     Write-Verbose "Determined executable to run (SCO/CSS): $correctExeName"
 } else {
     $executable = $exitCodeToExeMap[$exitCode]
-    Write-Verbose "Determined executable to run: $correctExeName"
+    Write-Verbose "Determined executable to run (Standard POS): $executable"
 }
 
 # Initialize $sfxPath based on $versionMajorMinor and $computerNameSuffix
