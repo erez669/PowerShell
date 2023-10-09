@@ -13,6 +13,7 @@ $hostname = $env:COMPUTERNAME
 $logo2 = $null
 $xmlPath = $null 
 $backupPath = $null
+$initialDir = [System.Environment]::CurrentDirectory
 
 # Kill tasks
 Stop-Process -Name "GroceryWinPos" -Force -ErrorAction SilentlyContinue -Verbose
@@ -23,7 +24,7 @@ Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue -Verbose
 Start-Sleep -Seconds 10 -Verbose
 
 # Run kupalogo.exe
-$scriptDir = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
+$scriptDir = $initialDir
 Write-Host "The script directory is: $scriptDir"
 Start-Process -FilePath "$scriptDir\kupalogo.exe" -NoNewWindow:$false -Wait:$false
 Write-Verbose "After kupalogo.exe"
@@ -141,8 +142,8 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $architecture = (Get-WmiObject -Query "SELECT * FROM Win32_Processor").AddressWidth
     Write-Verbose "OS version is $version"
     
-    $scriptRoot = [System.IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Definition) # Get script location
-    $dir = "Shufersal"
+    # $scriptRoot = [System.IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Definition) # Get script location
+    # $dir = "Shufersal"
 
     $versionMajorMinor = ($version -split "\.")[0..1] -join "."
 
