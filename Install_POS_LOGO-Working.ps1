@@ -23,7 +23,7 @@ Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue -Verbose
 Start-Sleep -Seconds 10 -Verbose
 
 # Run kupalogo.exe
-$scriptDir = (Get-Location).Path
+$scriptDir = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
 Write-Host "The script directory is: $scriptDir"
 Start-Process -FilePath "$scriptDir\kupalogo.exe" -NoNewWindow:$false -Wait:$false
 Write-Verbose "After kupalogo.exe"
@@ -141,7 +141,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $architecture = (Get-WmiObject -Query "SELECT * FROM Win32_Processor").AddressWidth
     Write-Verbose "OS version is $version"
     
-    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition  # Get script location
+    $scriptRoot = [System.IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Definition) # Get script location
     $dir = "Shufersal"
 
     $versionMajorMinor = ($version -split "\.")[0..1] -join "."
@@ -169,8 +169,10 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
 # Determine correct executable based on the computer name suffix
 if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $correctExeName = $exitCodeToSCOFileMap[$exitCode]
+    Write-Verbose "Determined executable to run (SCO/CSS): $correctExeName"
 } else {
     $correctExeName = $exitCodeToExeMap[$exitCode]
+    Write-Verbose "Determined executable to run: $correctExeName"
 }
 
 # Initialize $sfxPath based on $versionMajorMinor and $computerNameSuffix
