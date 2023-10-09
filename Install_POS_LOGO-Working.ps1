@@ -13,7 +13,7 @@ $hostname = $env:COMPUTERNAME
 $logo2 = $null
 $xmlPath = $null 
 $backupPath = $null
-$initialDir = [System.Environment]::CurrentDirectory
+$initialDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 # Kill tasks
 Stop-Process -Name "GroceryWinPos" -Force -ErrorAction SilentlyContinue -Verbose
@@ -170,10 +170,12 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
 # Determine correct executable based on the computer name suffix
 if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $correctExeName = $exitCodeToSCOFileMap[$exitCode]
+    $executable = $correctExeName
     Write-Verbose "Determined executable to run (SCO/CSS): $correctExeName"
 } else {
-    $executable = $exitCodeToExeMap[$exitCode]
-    Write-Verbose "Determined executable to run (Standard POS): $executable"
+    $correctExeName = $exitCodeToExeMap[$exitCode]
+    $executable = $correctExeName
+    Write-Verbose "Determined executable to run (Standard POS): $correctExeName"
 }
 
 # Initialize $sfxPath based on $versionMajorMinor and $computerNameSuffix
@@ -191,10 +193,16 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $sfxPath = $scriptRoot  # If non-SCO, the location is in the script root
 }
 
+Write-Host "Script Root: $scriptRoot"
+Write-Host "Version: $version"
+Write-Host "Version Major Minor: $versionMajorMinor"
+Write-Host "sfxPath: $sfxPath"
+
 # Check if all variables are set before executing
 if ($sfxPath -and $correctExeName) {
     $fullPathToDirExe = Join-Path $sfxPath $correctExeName
     Write-Host "Checking executable path: $fullPathToDirExe"
+    Write-Host "Full Path to Dir Exe: $fullPathToDirExe"
     
     if (Test-Path $fullPathToDirExe) {
         Start-Process $fullPathToDirExe -NoNewWindow:$false -Wait:$false
