@@ -13,7 +13,7 @@ Get-ChildItem -Path $directory -Filter *.scn | ForEach-Object {
             DeviceName = $deviceName
         }
     }
-    else {
+   else {
         Write-Host "No Device Name found in $($_.FullName)"
     }
 }
