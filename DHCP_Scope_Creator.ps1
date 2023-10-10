@@ -1,6 +1,13 @@
-                                        # Created By Erez Schwartz
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 
-$ErrorActionPreference = 'SilentlyContinue'
+{   
+$arguments = "& '" + $myinvocation.mycommand.definition + "'"
+Start-Process powershell -Verb runAs -ArgumentList $arguments
+Break
+}
+
+Clear-Host
+
 Install-WindowsFeature -Name 'DHCP' –IncludeManagementTools
 
 # dhcp scope variables
@@ -36,8 +43,10 @@ Add-DHCPServerv4Scope -StartRange $startrange2 -EndRange $endrange2 -SubnetMask 
 # Adding Scope Options
 Set-DHCPServerv4OptionValue -Router $router1 -ScopeId $1stvLan
 Set-DHCPServerv4OptionValue -Router $router2 -ScopeId $2ndvLan
-Set-DHCPServerv4OptionValue -DnsServer $DNS1, $DNS2 -DnsDomain mydns
+Set-DHCPServerv4OptionValue -DnsServer $DNS1, $DNS2 -DnsDomain posprod.supersol.co.il
 Set-DHCPServerv4OptionValue -Router $router1, $router2
-Add-DhcpServerv4OptionDefinition -ComputerName $srvName -Name PXEClient -Description "PXE Support" -OptionId 060 -Type String
-Set-DhcpServerv4OptionValue -ComputerName $srvName -OptionId 060 -Value "PXEClient"
+
+# set value for Option 60 globally (for all scopes):
+Add-DhcpServerv4OptionDefinition -OptionId 60 -Name PXEClient -Description "PXE Support" -Type String
+Set-DhcpServerv4OptionValue -OptionId 60 -Value "PXEClient"
 Restart-service dhcpserver
