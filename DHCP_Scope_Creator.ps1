@@ -46,7 +46,16 @@ Set-DHCPServerv4OptionValue -Router $router2 -ScopeId $2ndvLan
 Set-DHCPServerv4OptionValue -DnsServer $DNS1, $DNS2 -DnsDomain posprod.supersol.co.il
 Set-DHCPServerv4OptionValue -Router $router1, $router2
 
-# set value for Option 60 globally (for all scopes):
-Add-DhcpServerv4OptionDefinition -OptionId 60 -Name PXEClient -Description "PXE Support" -Type String
-Set-DhcpServerv4OptionValue -OptionId 60 -Value "PXEClient"
-Restart-service dhcpserver
+# Check if Option 60 already exists
+$option60Exists = Get-DhcpServerv4OptionDefinition -Verbose | Where-Object { $_.OptionId -eq 60 }
+
+# If it exists, remove it
+if ($option60Exists) {
+    Remove-DhcpServerv4OptionDefinition -OptionId 60 -Verbose
+}
+
+# Now add Option 60
+Add-DhcpServerv4OptionDefinition -OptionId 60 -Name PXEClient -Description "PXE Support" -Type String -Verbose
+Set-DhcpServerv4OptionValue -ComputerName $srvName -OptionId 060 -Value "PXEClient" -Verbose
+
+Restart-service dhcpserver -Force -Verbose
