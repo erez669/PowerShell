@@ -1,5 +1,5 @@
 $directory = "E:\LANDesk\ManagementSuite\ldscan\ErrorScan"
-$outputFile = "E:\LANDesk\ManagementSuite\ldscan\ErrorScan\OutPut-scn.csv"
+$outputFile = "E:\LANDesk\ManagementSuite\ldscan\OutPut-scn.csv"
 
 $deviceNames = @()
 
@@ -11,9 +11,10 @@ Get-ChildItem -Path $directory -Filter *.scn | ForEach-Object {
         Write-Host "Device Name found: $deviceName"
         $deviceNames += [PSCustomObject]@{
             DeviceName = $deviceName
+            FileName = $_.Name
         }
     }
-   else {
+    else {
         Write-Host "No Device Name found in $($_.FullName)"
     }
 }
