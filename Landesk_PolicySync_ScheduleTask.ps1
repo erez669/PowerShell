@@ -2,14 +2,21 @@
 $logFile = "C:\Install\PolicySync_log.txt"
 
 function Write-Log {
-    Param ([string]$message)  
+    Param ([string]$message, [switch]$overwrite)
     try {
-        Add-Content $logFile -Value "$(Get-Date) - $message"
+        if ($overwrite) {
+            Set-Content $logFile -Value "$(Get-Date) - $message"
+        } else {
+            Add-Content $logFile -Value "$(Get-Date) - $message"
+        }
     }
     catch {
         Write-Host "Couldn't write to log: $_"
     }
 }
+
+# At the start of script execution, overwrite the existing log file with a new entry
+Write-Log "Script started" -overwrite
 
 If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 {   
@@ -59,7 +66,7 @@ $settings.ExecutionTimeLimit = 'PT0S'
 
 $rootFolder.RegisterTaskDefinition($taskName, $taskDefinition, 6, $null, $null, 3)
 
-Write-Log "Task '$TaskName' created successfully."
+Write-Log "Task '$taskName' created successfully."
 
 # Close the log file
 Write-Log "Script finished"
