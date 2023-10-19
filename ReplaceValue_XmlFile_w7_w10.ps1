@@ -16,7 +16,7 @@ $dirEntry = New-Object System.DirectoryServices.DirectoryEntry($ldapPath)
 $search = New-Object System.DirectoryServices.DirectorySearcher($dirEntry)
 
 $search.Filter = "(CN=$groupCN)"
-$search.PropertiesToLoad.Add("memberOf")
+[void]$search.PropertiesToLoad.Add("memberOf")
 
 $group = $search.FindOne() 
 
@@ -65,14 +65,24 @@ if (Test-Path $configPath) {
   $xmlDoc = New-Object System.Xml.XmlDocument
   $xmlDoc.Load($configPath)
 
-   if ($isPharmStore -and ($configPath -like "*GroceryWinPos.exe.config")) {
-    $targetNode = $xmlDoc.SelectSingleNode('//appSettings/add[@key="plasticbagplunumber"]')
+    if ($isPharmStore -and ($configPath -like "*GroceryWinPos.exe.config")) {
+    # Use local-name() to bypass the namespace issue
+    $targetNode = $xmlDoc.SelectSingleNode("//*[local-name()='appSettings']/*[local-name()='add'][@key='plasticbagplunumber']")
     if ($targetNode -ne $null) {
       
-      # To delete (Uncomment below line to delete)
+      # Debugging output before deletion
+      Write-Host "Target node detected: $($targetNode.OuterXml)"
+      
+      # Line To delete
       $targetNode.ParentNode.RemoveChild($targetNode)
+      
+      # Debugging output after deletion
+      Write-Host "Node removed successfully"
+    } else {
+      # Debugging output if node is not found
+      Write-Host "Target node not found"
     }
-  }
+}
   
   $urlNode = $xmlDoc.SelectSingleNode('//URL')
   
