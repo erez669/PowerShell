@@ -1,4 +1,4 @@
-﻿$localFiles = "C:\yarpadb\sql_Backup"
+$localFiles = "C:\yarpadb\sql_Backup"
 $files = Get-ChildItem -Path $localFiles -Recurse
 
 # Extract the last three characters from the hostname
@@ -27,7 +27,7 @@ if ($Matches[0]) {
                 New-Item -ItemType Directory -Path $destinationDir | Out-Null
             }
             
-            Copy-Item -Path $file.FullName -Destination $destinationPath
+            Copy-Item -Path $file.FullName -Destination $destinationPath -Force -Verbose
         }
         
         Write-Progress -Activity "Copying files to $destination" -Completed
