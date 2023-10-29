@@ -59,3 +59,6 @@ Add-DhcpServerv4OptionDefinition -OptionId 60 -Name PXEClient -Description "PXE 
 Set-DhcpServerv4OptionValue -ComputerName $srvName -OptionId 060 -Value "PXEClient" -Verbose
 
 Restart-service dhcpserver -Force -Verbose
+
+# Set DHCP server service startup type to Manual
+Set-Service -Name DHCPServer -StartupType Manual -Verbose
