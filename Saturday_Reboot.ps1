@@ -74,4 +74,4 @@ if ($today.DayOfWeek -eq 'Saturday') {
         }
 }
 
-schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml"
+schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml" /F
