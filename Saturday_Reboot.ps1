@@ -1,4 +1,4 @@
-﻿If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 
 {   
 $arguments = "& '" + $myinvocation.mycommand.definition + "'"
@@ -56,13 +56,22 @@ if ($today.DayOfWeek -eq 'Saturday') {
             }
         }
         default {
-            # For the last Saturday, we check if it's the last week of the month
-            if ($weekNum -eq [math]::Ceiling((Get-Date -Year $today.Year -Month $today.Month -Day 1).AddMonths(1).AddDays(-1).Day / 7) -and $hostname -like '*YARPASQL*') {
-                Write-Verbose "Rebooting on the last Saturday of the month"
-                shutdown -r -t 0 -f
-            }
+        # Get the last day of the month
+        $lastDayOfMonth = (Get-Date -Year $today.Year -Month $today.Month -Day 1).AddMonths(1).AddDays(-1)
+    
+        # Find the last Saturday of the month
+        while ($lastDayOfMonth.DayOfWeek -ne 'Saturday') {
+        $lastDayOfMonth = $lastDayOfMonth.AddDays(-1)
         }
-    }
+
+        # Check if today is the last Saturday of the month and if the hostname matches the pattern
+        if ($today.Date -eq $lastDayOfMonth.Date -and $hostname -like '*YARPASQL*') {
+        Write-Verbose "Rebooting on the last Saturday of the month"
+        shutdown -r -t 0 -f
+        }
+}
+
+        }
 }
 
 schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml"
