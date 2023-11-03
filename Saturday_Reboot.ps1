@@ -56,16 +56,23 @@ if ($today.DayOfWeek -eq 'Saturday') {
             }
         }
         default {
-        # Get the last day of the month
-        $lastDayOfMonth = (Get-Date -Year $today.Year -Month $today.Month -Day 1).AddMonths(1).AddDays(-1)
-    
-        # Find the last Saturday of the month
-        while ($lastDayOfMonth.DayOfWeek -ne 'Saturday') {
-        $lastDayOfMonth = $lastDayOfMonth.AddDays(-1)
+        function Get-LastSaturday($year, $month) {
+        $firstDayOfNextMonth = Get-Date -Year $year -Month $month -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0
+        $firstDayOfNextMonth = $firstDayOfNextMonth.AddMonths(1)
+        $lastDayOfMonth = $firstDayOfNextMonth.AddDays(-1)
+
+        $daysUntilSaturday = [DayOfWeek]::Saturday.value__ - $lastDayOfMonth.DayOfWeek.value__
+        if ($daysUntilSaturday -lt 0) { $daysUntilSaturday += 7 }
+        $lastSaturday = $lastDayOfMonth.AddDays(-$daysUntilSaturday)
+
+        return $lastSaturday
         }
 
-        # Check if today is the last Saturday of the month and if the hostname matches the pattern
-        if ($today.Date -eq $lastDayOfMonth.Date -and $hostname -like '*YARPASQL*') {
+        # Calculate the last Saturday of the current month once
+        $lastSaturday = Get-LastSaturday -Year $today.Year -Month $today.Month
+
+        # Check if today is the last Saturday and the hostname pattern matches
+        if ($today.Date.Equals($lastSaturday.Date) -and $hostname -like '*YARPASQL*') {
         Write-Verbose "Rebooting on the last Saturday of the month"
         shutdown -r -t 0 -f
         }
