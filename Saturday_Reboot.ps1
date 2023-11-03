@@ -33,6 +33,18 @@ $weekNum = [math]::Ceiling($today.Day / 7)
 # Get the hostname of the machine
 $hostname = $env:COMPUTERNAME
 
+function Get-LastSaturday($year, $month) {
+    $firstDayOfNextMonth = Get-Date -Year $year -Month $month -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0
+    $firstDayOfNextMonth = $firstDayOfNextMonth.AddMonths(1)
+    $lastDayOfMonth = $firstDayOfNextMonth.AddDays(-1)
+
+    $daysUntilSaturday = [DayOfWeek]::Saturday.value__ - $lastDayOfMonth.DayOfWeek.value__
+    if ($daysUntilSaturday -lt 0) { $daysUntilSaturday += 7 }
+    $lastSaturday = $lastDayOfMonth.AddDays(-$daysUntilSaturday)
+
+    return $lastSaturday
+}
+
 # Check if today is Saturday
 if ($today.DayOfWeek -eq 'Saturday') {
     # Determine which Saturday of the month it is and check hostname to decide whether to reboot
@@ -56,29 +68,16 @@ if ($today.DayOfWeek -eq 'Saturday') {
             }
         }
         default {
-        function Get-LastSaturday($year, $month) {
-        $firstDayOfNextMonth = Get-Date -Year $year -Month $month -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0
-        $firstDayOfNextMonth = $firstDayOfNextMonth.AddMonths(1)
-        $lastDayOfMonth = $firstDayOfNextMonth.AddDays(-1)
+            # Calculate the last Saturday of the current month once
+            $lastSaturday = Get-LastSaturday -Year $today.Year -Month $today.Month
 
-        $daysUntilSaturday = [DayOfWeek]::Saturday.value__ - $lastDayOfMonth.DayOfWeek.value__
-        if ($daysUntilSaturday -lt 0) { $daysUntilSaturday += 7 }
-        $lastSaturday = $lastDayOfMonth.AddDays(-$daysUntilSaturday)
-
-        return $lastSaturday
+            # Check if today is the last Saturday and the hostname pattern matches
+            if ($today.Date.Equals($lastSaturday.Date) -and $hostname -like '*YARPASQL*') {
+                Write-Verbose "Rebooting on the last Saturday of the month"
+                shutdown -r -t 0 -f
+            }
         }
-
-        # Calculate the last Saturday of the current month once
-        $lastSaturday = Get-LastSaturday -Year $today.Year -Month $today.Month
-
-        # Check if today is the last Saturday and the hostname pattern matches
-        if ($today.Date.Equals($lastSaturday.Date) -and $hostname -like '*YARPASQL*') {
-        Write-Verbose "Rebooting on the last Saturday of the month"
-        shutdown -r -t 0 -f
-        }
-}
-
-        }
+    }
 }
 
 schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml" /F
