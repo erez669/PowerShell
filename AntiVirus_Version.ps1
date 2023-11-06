@@ -1,4 +1,4 @@
-﻿# Check for admin rights
+# Check for admin rights
 If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))  
 {
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
@@ -7,7 +7,7 @@ If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # Output path 
-$outputPath = "\\myserver\PaloAlto\VersionCheck\Cortex_Version.csv"
+$outputPath = "\\myserver\VersionCheck\Cortex_Version.csv"
 
 # Get installed products
 $regPath = "HKLM:\SOFTWARE\Classes\Installer\Products\*"
@@ -32,23 +32,26 @@ foreach ($key in $productKeys) {
 
 # Output to CSV 
 if ($productNameData) {
-
+    # Line of data to append
     $csvLine = "$($hostname),$($productNameData)`n"
-
+    
     try {
-        # Check if the file exists and write the header only if it's new or empty
-        if (-Not (Test-Path -Path $outputPath) -Or (Get-Content -Path $outputPath).Length -eq 0) {
-            $csvHeader = "ComputerName,ProductData`n"
-            $csvLine = $csvHeader + $csvLine
-        }
+        # Check if the file exists
+        $fileExists = Test-Path -Path $outputPath -Verbose
 
-        # Open file for append
+        # Open file for append or create if it doesn't exist
         $file = [System.IO.File]::Open($outputPath, [System.IO.FileMode]::Append)
 
         # Create StreamWriter from FileStream
-        $writer = New-Object System.IO.StreamWriter($file)  
+        $writer = New-Object System.IO.StreamWriter($file) -Verbose
 
-        # Write line
+        # If the file is new or empty, write the header
+        if (-Not $fileExists -Or $file.Length -eq 0) {
+            $csvHeader = "ComputerName,ProductData`n"
+            $writer.WriteLine($csvHeader)
+        }
+
+        # Write line of data
         $writer.WriteLine($csvLine)
 
         # Close StreamWriter and FileStream
@@ -60,5 +63,4 @@ if ($productNameData) {
     }
 
     Write-Host "Details added to $outputPath"
-
 }
