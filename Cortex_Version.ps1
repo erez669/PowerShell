@@ -7,7 +7,7 @@ If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # Output path 
-$outputPath = "\\ivantiappsrv.corp.supersol.co.il\IvantiShare\Packages\SHARED\PaloAlto\VersionCheck\Cortex_Version.csv"
+$outputPath = "\\myserver\PaloAlto\VersionCheck\Cortex_Version.csv"
 
 # Get installed products
 $regPath = "HKLM:\SOFTWARE\Classes\Installer\Products\*"
