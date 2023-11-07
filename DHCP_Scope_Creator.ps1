@@ -36,6 +36,8 @@ $router2 = "10.11$1stNum.$intOctet.254"
 $DNS1 = "10.250.207.150"
 $DNS2 = "10.250.207.151"
 
+Get-DhcpServerInDC | Where-Object DNSName -EQ (([System.Net.Dns]::GetHostByName(($env:computerName))).Hostname)  | Remove-DhcpServerInDC ; Add-DhcpServerInDc -DnsName (([System.Net.Dns]::GetHostByName(($env:computerName))).Hostname)
+
 # Creating scopes
 Add-DHCPServerv4Scope -StartRange $startrange1 -EndRange $endrange1 -SubnetMask $subnetmask -Name $scopename1 -State Active
 Add-DHCPServerv4Scope -StartRange $startrange2 -EndRange $endrange2 -SubnetMask $subnetmask -Name $scopename2 -State Active
