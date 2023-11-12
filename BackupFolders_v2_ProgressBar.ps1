@@ -4,11 +4,24 @@ $localFiles = "C:\yarpadb\sql_Backup"
 # Get today's date
 $today = (Get-Date).Date
 
-# Get only .bak files modified today
+Write-Host "Today's Date: $today"
+Write-Host "Available .bak files before filtering:"
+Get-ChildItem -Path $localFiles -Filter *.bak -Recurse | 
+    Select-Object FullName, @{Name="LastWriteTime"; Expression={$_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")}} |
+    Format-Table -AutoSize
+
+# File selection logic
 $files = Get-ChildItem -Path $localFiles -Filter *.bak -Recurse -Verbose |
          Where-Object { $_.LastWriteTime.Date -eq $today } |
-         Sort-Object LastWriteTime -Descending |
-         Select-Object -First 1
+         Sort-Object LastWriteTime
+
+# If there are multiple files, skip the first (earliest) one
+if ($files.Count -gt 1) {
+    $files = $files | Select-Object -Skip 1
+}
+
+Write-Host "Files to be copied:"
+$files | Select-Object FullName, @{Name="LastWriteTime"; Expression={$_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")}}
 
 # Extract the appropriate number from the hostname
 if ($env:COMPUTERNAME -match 'WKS-(\d+)-\d{3}') {
