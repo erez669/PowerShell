@@ -5,7 +5,10 @@ $localFiles = "C:\yarpadb\sql_Backup"
 $today = (Get-Date).Date
 
 # Get only .bak files modified today
-$files = Get-ChildItem -Path $localFiles -Filter *.bak -Recurse -Verbose | Where-Object { $_.LastWriteTime -gt $today }
+$files = Get-ChildItem -Path $localFiles -Filter *.bak -Recurse -Verbose |
+         Where-Object { $_.LastWriteTime.Date -eq $today } |
+         Sort-Object LastWriteTime -Descending |
+         Select-Object -First 1
 
 # Extract the appropriate number from the hostname
 if ($env:COMPUTERNAME -match 'WKS-(\d+)-\d{3}') {
