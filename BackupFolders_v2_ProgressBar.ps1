@@ -67,14 +67,30 @@ function Copy-WithProgress($source, $destination, $filesToCopy) {
     Write-Progress -Activity "Copying files" -Status "Completed" -Completed
 }
 
+function Cleanup-OldBackups($destination) {
+    Write-Host "Cleaning up old backups at $destination"
+
+    Get-ChildItem -Path $destination -Filter *.bak |
+        Sort-Object LastWriteTime |
+        Select-Object -Skip 1 |
+        ForEach-Object {
+            Write-Host "Removing old backup file: $($_.FullName)"
+            Remove-Item $_.FullName -Force
+        }
+}
+
 # Check if there are files to copy and then copy them to the remote locations
 if ($filesToCopy.Count -gt 0) {
     try {
         Copy-WithProgress -source $localFiles -destination $remotePathPL -filesToCopy $filesToCopy 
+        Cleanup-OldBackups -destination $remotePathPL
+
         Copy-WithProgress -source $localFiles -destination $remotePathWKS -filesToCopy $filesToCopy
-        Write-Host "Files copied successfully."
+        Cleanup-OldBackups -destination $remotePathWKS
+
+        Write-Host "Files copied and old backups cleaned successfully."
     } catch {
-        Write-Host "Error copying files: $_"
+        Write-Host "Error during operation: $_"
     }
 } else {
     Write-Host "No new .bak files to copy today."
