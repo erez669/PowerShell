@@ -1,27 +1,32 @@
 # Define the path for local backup files
 $localFiles = "C:\yarpadb\sql_Backup"
 
-# Get today's date
-$today = (Get-Date).Date
-
-Write-Host "Today's Date: $today"
-Write-Host "Available .bak files before filtering:"
-Get-ChildItem -Path $localFiles -Filter *.bak -Recurse | 
-    Select-Object FullName, @{Name="LastWriteTime"; Expression={$_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")}} |
-    Format-Table -AutoSize
-
 # File selection logic
-$files = Get-ChildItem -Path $localFiles -Filter *.bak -Recurse -Verbose |
-         Where-Object { $_.LastWriteTime.Date -eq $today } |
-         Sort-Object LastWriteTime
+$filesToCopy = @()
 
-# If there are multiple files, skip the first (earliest) one
-if ($files.Count -gt 1) {
-    $files = $files | Select-Object -Skip 1
+$backupFolders = Get-ChildItem -Path $localFiles -Directory -Recurse -Verbose
+
+Write-Output "Local files path: $localFiles"
+
+Write-Output "Files to copy before loop:"
+$filesToCopy
+
+foreach ($folder in $backupFolders) {
+
+  Write-Host "Looking in folder: $($folder.FullName)"
+  
+  $latestBackup = Get-ChildItem -Path $folder.FullName -Filter *.bak |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+    Write-Host "Latest backup: $($latestBackup.FullName)"
+
+    $filesToCopy += $latestBackup
+
 }
 
 Write-Host "Files to be copied:"
-$files | Select-Object FullName, @{Name="LastWriteTime"; Expression={$_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")}}
+$filesToCopy | Select-Object FullName, LastWriteTime
 
 # Extract the appropriate number from the hostname
 if ($env:COMPUTERNAME -match 'WKS-(\d+)-\d{3}') {
@@ -60,7 +65,7 @@ function Copy-WithProgress($source, $destination, $filesToCopy) {
         $percentComplete = ($currentFile / $fileCount) * 100
         Write-Progress -Activity "Copying files to $destination" -Status "$currentFile of $fileCount" -PercentComplete $percentComplete
 
-        $destinationPath = $file.FullName.Replace($source, $destination)
+        $destinationPath = [System.IO.Path]::Combine($destination, $file.Name)
         $destinationDir = [System.IO.Path]::GetDirectoryName($destinationPath)
 
         if (-not (Test-Path $destinationDir)) {
@@ -74,10 +79,14 @@ function Copy-WithProgress($source, $destination, $filesToCopy) {
 }
 
 # Check if there are files to copy
-if ($files.Count -gt 0) {
+if ($filesToCopy.Count -gt 0) {
     # Copy the files to the remote servers
-    Copy-WithProgress -source $localFiles -destination $remotePathPL -filesToCopy $files
-    Copy-WithProgress -source $localFiles -destination $remotePathWKS -filesToCopy $files
+    try {
+        Copy-WithProgress -source $localFiles -destination $remotePathPL -filesToCopy $filesToCopy 
+        Copy-WithProgress -source $localFiles -destination $remotePathWKS -filesToCopy $filesToCopy
+  } catch {
+        Write-Host "Error copying files: $_"
+}
 
     Write-Host "Files copied successfully."
 } else {
