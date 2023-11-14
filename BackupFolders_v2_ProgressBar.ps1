@@ -5,7 +5,7 @@ $localFiles = "C:\yarpadb\sql_Backup"
 $filesToCopy = @()
 
 # Get a list of all subdirectories containing backup files
-$backupFolders = Get-ChildItem -Path $localFiles -Directory -Recurse -Verbose
+$backupFolders = Get-ChildItem -Path $localFiles -Recurse -Verbose | Where-Object { $_.PSIsContainer }
 
 Write-Output "Local files path: $localFiles"
 
