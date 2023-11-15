@@ -1,3 +1,11 @@
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+
+{   
+$arguments = "& '" + $myinvocation.mycommand.definition + "'"
+Start-Process powershell -Verb runAs -ArgumentList $arguments
+Break
+}
+
 # Define the path for local backup files
 $localFiles = "C:\yarpadb\sql_Backup"
 
@@ -88,8 +96,8 @@ function Cleanup-OldBackups($destination) {
 function Cleanup-EmptyDirectories($rootPath) {
     Write-Host "Cleaning up empty directories in $rootPath"
 
-    Get-ChildItem -Path $rootPath -Directory -Recurse -Verbose |
-        Where-Object { $_.GetFileSystemInfos().Count -eq 0 } |
+    Get-ChildItem -Path $rootPath -Recurse -Verbose |
+        Where-Object { $_.PSIsContainer -and $_.GetFileSystemInfos().Count -eq 0 } |
         ForEach-Object {
             Write-Host "Removing empty directory: $($_.FullName)"
             Remove-Item $_.FullName -Force -Verbose
