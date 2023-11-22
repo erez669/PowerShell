@@ -1,4 +1,4 @@
-﻿If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
     Break
@@ -96,17 +96,6 @@ if ($removalSuccessful) {
     # Pause 5 seconds
     Start-Sleep -Seconds 5
 
-    # Display message box (not minimized)
-    $result = [System.Windows.Forms.MessageBox]::Show("Process completed successfully, please reboot your machine to complete the removal process", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-
-    # Check the result (if needed)
-    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-        # User clicked OK
-        Write-Host "User clicked OK."
-    } else {
-        Write-Host "User did not click OK."
-    }
-
     # Remove the C:\install\CoretxCleaner folder and its contents
     Write-Host "Removing the folder C:\install\CoretxCleaner and its contents..."
     Remove-Item -Path "C:\install\CoretxCleaner" -Recurse -Force -Verbose
@@ -114,3 +103,13 @@ if ($removalSuccessful) {
 } else {
     Write-Host "Exiting script due to unsuccessful XDR agent removal."
 }
+
+    # Display message box (not minimized)
+    $form = New-Object System.Windows.Forms.Form
+    $form.TopMost = $true
+
+    $result = [System.Windows.Forms.MessageBox]::Show("Operation completed successfully, please reboot your machine to complete the removal process.", "Success",
+    [System.Windows.Forms.MessageBoxButtons]::OK,
+    [System.Windows.Forms.MessageBoxIcon]::Information,
+    [System.Windows.Forms.MessageBoxDefaultButton]::Button1,
+    [System.Windows.Forms.MessageBoxOptions]::ServiceNotification)
