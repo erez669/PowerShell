@@ -107,4 +107,28 @@ else {
     Write-Verbose "Today is not Saturday. No reboot."
 }
 
-schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml" /F
+function Test-ScheduledTaskExists {
+    param (
+        [string]$TaskName
+    )
+    $taskExists = $false
+    try {
+        $taskInfo = schtasks /query | Select-String $TaskName
+        if ($taskInfo -ne $null) {
+            $taskExists = $true
+        }
+    } catch {
+        Write-Host "Error checking task: $_"
+    }
+    return $taskExists
+}
+
+# Check if the scheduled task already exists
+if (-not (Test-ScheduledTaskExists -TaskName "Reboot_Server")) {
+    Write-Host "Creating scheduled task 'Reboot_Server'..."
+    schtasks /create /tn "Reboot_Server" /xml "C:\Install\Reboot_Server.xml"
+} else {
+    Write-Host "Scheduled task 'Reboot_Server' already exists."
+}
+
+exit 0
