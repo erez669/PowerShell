@@ -34,11 +34,23 @@ $weekNum = [math]::Ceiling($today.Day / 7)
 $hostname = $env:COMPUTERNAME
 
 function Get-LastSaturday($year, $month) {
-    $lastDayOfMonth = Get-Date -Year $year -Month $month -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0
-    $lastDayOfMonth = $lastDayOfMonth.AddMonths(1).AddDays(-1)
+    # Get the last day of the month
+    try {
+        $lastDayOfMonth = Get-Date -Year $year -Month $month -Day 1 -Hour 0 -Minute 0 -Second 0
+    } catch {
+        Write-Error "Error in getting date: $_"
+        return
+    }
 
-    while ($lastDayOfMonth.DayOfWeek -ne [DayOfWeek]::Saturday) {
-        $lastDayOfMonth = $lastDayOfMonth.AddDays(-1)
+    if ($lastDayOfMonth -ne $null) {
+        $lastDayOfMonth = $lastDayOfMonth.AddMonths(1).AddDays(-1)
+
+        while ($lastDayOfMonth.DayOfWeek -ne [DayOfWeek]::Saturday) {
+            $lastDayOfMonth = $lastDayOfMonth.AddDays(-1)
+        }
+    } else {
+        Write-Error "Last day of month is null"
+        return
     }
 
     return $lastDayOfMonth
