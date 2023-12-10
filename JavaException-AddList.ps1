@@ -1,9 +1,9 @@
-﻿If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 
 {   
 $arguments = "& '" + $myinvocation.mycommand.definition + "'"
 Start-Process powershell -Verb runAs -ArgumentList $arguments
-Break
+exit
 }
 
 # List of IP addresses
@@ -158,9 +158,11 @@ function Remove-LeadingZerosAndAdjustLastOctet {
 foreach ($ip in $ipAddresses) {
     if (-not [string]::IsNullOrWhiteSpace($ip)) {
         $formattedIP = Remove-LeadingZerosAndAdjustLastOctet $ip
-        $entry = "https://$formattedIP"
-        Add-Content -Path $exceptionFilePath -Value $entry
+        $httpsEntry = "https://$formattedIP"
+        $httpEntry = "http://$formattedIP"
+        Add-Content -Path $exceptionFilePath -Value $httpsEntry
+        Add-Content -Path $exceptionFilePath -Value $httpEntry
     }
 }
 
-Write-Host "IP addresses have been adjusted and added to the Java exception list."
+Write-Host "IP addresses have been adjusted and added to the Java exception list for both HTTPS and HTTP."
