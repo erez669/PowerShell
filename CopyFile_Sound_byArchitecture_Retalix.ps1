@@ -85,12 +85,12 @@ Function GetAdGroupsForBranch($branchNumber) {
                 Write-Host "Destination path exists. Copying file..."
                 Copy-Item $source -Destination $destination -Recurse -Verbose -Force
             } else {
-                Write-Host "Destination path does not exist. Exiting with code 4."
+                Write-Host "Destination path does not exist. Exiting with code 3."
                 exit 3
             }
         }
         else {
-            Write-Host "The requested group 'Net_SuperSol_Good_Market' not found. Exiting with code 4."
+            Write-Host "The requested group 'Net_SuperSol_Good_Market' not found. Exiting with code 3."
             exit 3
         }
     } else {
