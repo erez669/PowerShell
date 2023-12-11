@@ -1,4 +1,4 @@
-﻿# Check if running as Administrator
+# Check if running as Administrator
 If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {   
     Write-Host "Not running as Administrator. Attempting to restart with elevated privileges."
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
@@ -8,10 +8,11 @@ If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Write-Host "Running as Administrator."
 
+# Initialize 'System.DirectoryServices.AccountManagement'
+Add-Type -AssemblyName System.DirectoryServices.AccountManagement
+
 # Function to check if the computer is in the specified AD group
 Function IsInAdGroup($groupName) {
-    # Initialize 'System.DirectoryServices.AccountManagement'
-    Add-Type -AssemblyName System.DirectoryServices.AccountManagement
 
     # Get the current user's identity
     $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
@@ -41,9 +42,6 @@ Write-Host "Branch number is: $branchNumber"
 # Define the function to check and display AD groups related to the branch
 Function GetAdGroupsForBranch($branchNumber) {
     Write-Host "Getting AD groups that the branch group is a member of for branch: $branchNumber"
-
-    # Initialize 'System.DirectoryServices.AccountManagement'
-    Add-Type -AssemblyName System.DirectoryServices.AccountManagement
 
     # Define the search base for the branch groups in Active Directory
     $searchBase = "OU=branchgroups,ou=groupobjects,ou=ous,dc=posprod,dc=supersol,dc=co,dc=il"
