@@ -1,4 +1,4 @@
-﻿If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
 {   
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
@@ -123,8 +123,10 @@ catch {
     Write-Error "Error: $_"
 }
 
-# Remove all .swf files from the videos folder
+# Define the folder path
 $videoFolderPath = "C:\Program Files (x86)\Retalix\SCO.NET\App\Shufersal\PPL\IMAGES\VIDEOS"
+
+# Remove all .swf files from the videos folder
 Get-ChildItem $videoFolderPath -Include *.swf -Recurse -Verbose -Force | Remove-Item -Force -Verbose
 
 # Function to revert file extensions for .avi and .mp4 files
