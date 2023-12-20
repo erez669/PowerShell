@@ -1,12 +1,10 @@
 #Imports active directory module to only current session
 Import-Module activedirectory
 
-$ErrorActionPreference = 'SilentlyContinue'
-
 do {
 cls
 $User = Get-ADUser -Identity (Read-Host "Copy From Username")
-$Domain = "mydomain.co.il"
+$Domain = "shufersal.co.il"
 $NewUser = Read-Host "New Username (Logon Name)"
 $userobj = Get-ADUser -LDAPFilter "(SAMAccountName=$NewUser)"
 write-host "`n" # for creating space
@@ -21,7 +19,7 @@ $jobtitle = Read-Host 'Enter Job Title'
 $mobile = Read-Host 'Enter New User Mobile Number'
 $SapNumber = Read-Host 'Enter EmployeeID (Sap Number 6 Digits)'
 $companyname = Read-Host 'Enter new user ComputerName\IP Address'
-$attribute10 = Read-Host 'UserType (just copy & paste) --> mycompany\OutSource\Sapak\Generic User\Mailbox User\Service User'
+$attribute10 = Read-Host 'UserType (just copy & paste) --> Shufersal\OutSource\Sapak\Generic User\Mailbox User\Service User'
 $upn = $NewUser + "@$Domain"
 $NewName = "$FirstName $LastName"
 $Info = Get-ADUser -Identity $User -Properties Title,Department,extensionattribute13
@@ -35,7 +33,7 @@ New-ADUser -SamAccountName $NewUser -Company $companyname -Name $NewName -Descri
 
 $Getusergroups = Get-ADUser -Identity $User -Properties memberof | Select-Object -ExpandProperty memberof
 $Getusergroups | Add-ADGroupMember -Members $NewUser -verbose
-Set-ADUser -Identity $NewUser -Replace @{userPrincipalName="$NewUser@mydomain.co.il"} # change upn suffix
+Set-ADUser -Identity $NewUser -Replace @{userPrincipalName="$NewUser@shufersal.co.il"} # change upn suffix
 $Groups = @("Office365_Lic_Default","Office365_Lic_Teams_Online","Office365 Required MFA","Office365_Lic_Office365_Apps")
 ForEach ($Group in $Groups) {Add-ADPrincipalGroupMembership $NewUser -MemberOf $Group}
 write-host "`n" # for creating space
@@ -50,7 +48,7 @@ Set-ADUser -Identity $NewUser -replace @{extensionAttribute13 = "$attribute13"}
 # Create HomeDrive for the new account
 $homeShare = "\\fileserv01\data\$NewUser"
 $driveLetter = "V:"
-$detect = "mydomain"
+$detect = "supersol"
 New-Item $homeShare -Type Directory -Force
 
 Set-ADUser -Identity $NewUser -HomeDrive $driveLetter -HomeDirectory $homeShare
@@ -100,7 +98,7 @@ Set-ADUser -Identity $NewUser -replace @{extensionAttribute13 = "$attribute13"}
 # Create HomeDrive for the new account
 $homeShare = "\\fileserv01\data\$NewUser"
 $driveLetter = "V:"
-$detect = "mydomain"
+$detect = "supersol"
 New-Item $homeShare -Type Directory -Force
 
 Set-ADUser -Identity $NewUser -HomeDrive $driveLetter -HomeDirectory $homeShare
