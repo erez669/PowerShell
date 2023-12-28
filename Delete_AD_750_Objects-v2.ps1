@@ -1,5 +1,5 @@
-If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
-{   
+# Check if running as Administrator
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {   
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
     exit
@@ -17,12 +17,18 @@ $ldapConnection.AuthType = [System.DirectoryServices.Protocols.AuthType]::Ntlm
 $outputFile = "C:\Scripts\ADResults-v2.txt"
 "" | Out-File -FilePath $outputFile -Verbose
 
+# Initialize counters at the global scope
+$Global:detectedObjectsCount = 0
+$Global:removedObjectsCount = 0
+
 function Write-OutputLog {
     param (
-        [string]$message
+        [string]$message,
+        [string]$type = "INFO"
     )
-    Write-Host $message
-    $message | Out-File -FilePath $outputFile -Append
+    $formattedMessage = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [$type] $message"
+    Write-Host $formattedMessage
+    $formattedMessage | Out-File -FilePath $outputFile -Append
 }
 
 Write-OutputLog "Starting Script Execution"
@@ -54,29 +60,27 @@ function SearchAndPrepare-ADObjects {
         [string]$searchBase
     )
     try {
-        $output = "[$(Get-Date)] Searching for $name in $searchBase"
-        Write-OutputLog $output
+        Write-OutputLog "Searching for $name in $searchBase"
 
         $searchRequest = New-Object System.DirectoryServices.Protocols.SearchRequest($searchBase, "(&(objectClass=computer)(name=$name))", 'Subtree', @("distinguishedName"))
         $searchResponse = $ldapConnection.SendRequest($searchRequest)
 
-        $output = "[$(Get-Date)] Search response count for ${name}: $($searchResponse.Entries.Count)"
-        Write-OutputLog $output
-
         if ($searchResponse.Entries.Count -gt 0) {
+            $Global:detectedObjectsCount += $searchResponse.Entries.Count
+            Write-OutputLog "Search response count for $name : $($searchResponse.Entries.Count)"
+
             $dn = $searchResponse.Entries[0].DistinguishedName
             $directoryEntry = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$dn")
             $directoryEntry.DeleteTree()
             $directoryEntry.CommitChanges()
 
-            $output = "[$(Get-Date)] $name successfully marked for deletion."
-            Write-OutputLog $output
+            $Global:removedObjectsCount++
+            Write-OutputLog "$name successfully marked for deletion."
         } else {
-            $output = "[$(Get-Date)] $name not found in AD."
-            Write-OutputLog $output
+            Write-OutputLog "$name not found in AD."
         }
     } catch {
-        $output = "[$(Get-Date)] Search response count for ${name}: $($searchResponse.Entries.Count)"
+        Write-OutputLog "Error during processing $name : $_" -type "ERROR"
     }
 }
 
@@ -86,19 +90,17 @@ function Get-ComputersByPattern {
         [string]$searchBase
     )
     try {
-        $output = "[$(Get-Date)] Searching for computers with pattern $pattern in $searchBase"
-        Write-OutputLog $output
+        Write-OutputLog "Searching for computers with pattern $pattern in $searchBase"
 
         $ldapFilter = "(&(objectClass=computer)(name=$pattern))"
         $searchRequest = New-Object System.DirectoryServices.Protocols.SearchRequest($searchBase, $ldapFilter, 'Subtree', @("name"))
         $searchResponse = $ldapConnection.SendRequest($searchRequest)
 
-        $output = "[$(Get-Date)] Search response count for ${name}: $($searchResponse.Entries.Count)"
-        Write-OutputLog $output
+        Write-OutputLog "Search response count for pattern $pattern : $($searchResponse.Entries.Count)"
 
         $searchResponse.Entries | ForEach-Object { $_.Attributes["name"][0] }
     } catch {
-        $output = "[$(Get-Date)] Search response count for ${name}: $($searchResponse.Entries.Count)"
+        Write-OutputLog "Error occurred during search for computers with pattern $pattern : $_" -type "ERROR"
     }
 }
 
@@ -112,30 +114,27 @@ foreach ($server in $serverNames) {
 $workstationOUs = @($wksOU1, $wksOU2)
 $posOUs = @($posOU1, $posOU2)
 
-Write-OutputLog "Processing Workstations"
+Write-OutputLog "Processing Workstations 888"
 foreach ($ou in $workstationOUs) {
     Write-OutputLog "Checking OU $ou for workstations"
     $matchingComputers = Get-ComputersByPattern -pattern $wksPattern -searchBase $ou
-    if ($matchingComputers) {
-        foreach ($computer in $matchingComputers) {
-            Write-OutputLog "Processing workstation $computer"
-            SearchAndPrepare-ADObjects -name $computer -searchBase $ou
-        }
-    } else {
-        Write-OutputLog "No matching workstations found in $ou"
+    foreach ($computer in $matchingComputers) {
+        Write-OutputLog "Processing workstation $computer"
+        SearchAndPrepare-ADObjects -name $computer -searchBase $ou
     }
 }
 
-Write-OutputLog "Processing POS Systems"
+Write-OutputLog "Processing POS 888 Systems"
 foreach ($ou in $posOUs) {
     Write-OutputLog "Checking OU $ou for POS systems"
     $matchingComputers = Get-ComputersByPattern -pattern $posPattern -searchBase $ou
-    if ($matchingComputers) {
-        foreach ($computer in $matchingComputers) {
-            Write-OutputLog "Processing POS system $computer"
-            SearchAndPrepare-ADObjects -name $computer -searchBase $ou
-        }
-    } else {
-        Write-OutputLog "No matching POS systems found in $ou"
+    foreach ($computer in $matchingComputers) {
+        Write-OutputLog "Processing POS system $computer"
+        SearchAndPrepare-ADObjects -name $computer -searchBase $ou
     }
 }
+
+# Script execution summary
+Write-OutputLog "Script execution completed."
+Write-OutputLog "Total objects detected: $Global:detectedObjectsCount"
+Write-OutputLog "Total objects removed: $Global:removedObjectsCount"
