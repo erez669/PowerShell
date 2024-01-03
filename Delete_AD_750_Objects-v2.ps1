@@ -44,11 +44,13 @@ try {
 
 # Server names and patterns
 $serverNames = @("plpossrv751", "slpossrv751", "plpossrv754", "slpossrv754", "plpossrv755", "slpossrv755", "plpossrv756", "slpossrv756", "plpossrv758", "slpossrv758", "plpossrv759", "slpossrv759")
+$WitnessNames = @("wlpossrv751", "wlpossrv754", "wlpossrv755", "wlpossrv756", "wlpossrv758", "wlpossrv759")
 $wksPattern = "WKS-888*"
 $posPattern = "POS-888*"
 
 # Organizational Units (OUs)
 $serverOU = "OU=Servers_2019,OU=Branches,OU=OUs,DC=posprod,DC=supersol,DC=co,DC=il"
+$WitnessOU = "OU=witness2k12,OU=Witness,OU=Branches,OU=OUs,DC=posprod,DC=supersol,DC=co,DC=il"
 $wksOU1 = "OU=USB Allowed,OU=PCI_WKS,OU=WorkStations,OU=Branches,OU=OUs,DC=posprod,DC=supersol,DC=co,DC=il"
 $wksOU2 = "OU=USB Restricted,OU=PCI_WKS,OU=WorkStations,OU=Branches,OU=OUs,DC=posprod,DC=supersol,DC=co,DC=il"
 $posOU1 = "OU=USB Allowed,OU=Cachiers,OU=Branches,OU=OUs,DC=posprod,DC=supersol,DC=co,DC=il"
@@ -108,6 +110,12 @@ function Get-ComputersByPattern {
 foreach ($server in $serverNames) {
     Write-OutputLog "Processing server $server"
     SearchAndPrepare-ADObjects -name $server -searchBase $serverOU
+}
+
+# Process for Witness Servers
+foreach ($object in $WitnessNames) {
+    Write-OutputLog "Processing server $object"
+    SearchAndPrepare-ADObjects -name $object -searchBase $WitnessOU
 }
 
 # Process for workstations and POS
