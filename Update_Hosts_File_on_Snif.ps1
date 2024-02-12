@@ -38,7 +38,6 @@ $newEntries = @(
 
 # Get the path to the hosts file and define the backup file path
 $hostsPath = "$env:windir\System32\drivers\etc\hosts"
-$backupPath = "$hostsPath.bak"
 
 # Read the current content of the hosts file
 $currentContent = Get-Content -Path $hostsPath -Raw
