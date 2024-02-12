@@ -26,14 +26,14 @@ $ipvl2 = "10.11$ipa.$ipb."
 
 # Define the new entries to add to the hosts file
 $newEntries = @(
-    "10.14.27.10         POSNLB$snif.posprod.supersol.co.il",
-    "10.14.27.1          PLPOSSRV$snif.posprod.supersol.co.il",
-    "10.14.27.2          SLPOSSRV$snif.posprod.supersol.co.il",
-    "10.114.27.9         WLPOSSRV$snif.posprod.supersol.co.il",
-    "10.250.238.21       MPRETALIXSQL1",
-    "10.250.238.22       MPRETALIXSQL2",
-    "10.250.238.11       RETALIXSQL1",
-    "10.250.238.12       RETALIXSQL2"
+    "$($ipvl1)10      POSNLB$snif.posprod.supersol.co.il",
+    "$($ipvl1)1       PLPOSSRV$snif.posprod.supersol.co.il",
+    "$($ipvl1)2       SLPOSSRV$snif.posprod.supersol.co.il",
+    "$($ipvl2)9       WLPOSSRV$snif.posprod.supersol.co.il",
+    "10.250.238.21    MPRETALIXSQL1",
+    "10.250.238.22    MPRETALIXSQL2",
+    "10.250.238.11    RETALIXSQL1",
+    "10.250.238.12    RETALIXSQL2"
 )
 
 # Get the path to the hosts file and define the backup file path
