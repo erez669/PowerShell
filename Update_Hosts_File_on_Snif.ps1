@@ -1,3 +1,21 @@
+<#
+.SYNOPSIS
+This script performs administrative tasks and updates the hosts file with specific entries based on the computer's name.
+
+.DESCRIPTION
+This PowerShell script checks if it's running with administrative privileges and restarts itself as an administrator if not. 
+It then determines the computer's SNIF based on its name, calculates IP address segments, and updates the hosts file with predefined entries.
+
+.EXAMPLE
+PS> .\Update_Hosts_File_on_Snif.ps1
+Executes the script, requiring administrative privileges, and updates the hosts file based on the system's name.
+
+.NOTES
+Ensure this script is run in an environment where administrative privileges can be obtained. 
+It's designed to work on systems following specific naming conventions (LP and POS).
+
+#>
+
 If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {   
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
@@ -36,46 +54,73 @@ $newEntries = @(
     "10.250.238.12    RETALIXSQL2"
 )
 
-# Get the path to the hosts file and define the backup file path
+# Get the path to the hosts file
 $hostsPath = "$env:windir\System32\drivers\etc\hosts"
 
-# Read the current content of the hosts file
-$currentContent = Get-Content -Path $hostsPath -Raw
+# Read the current content of the hosts file line by line and convert it to a single string
+$currentContentArray = Get-Content -Path $hostsPath
+$currentContent = $currentContentArray -join "`r`n"
 
-# Ensure $newEntries is not null or empty before proceeding
-if ($newEntries -and $newEntries.Count -gt 0) {
-    # Initialize a variable to store any new entries that need to be added
-    $newEntriesToAdd = ""
+# Check for null or empty content before trimming
+if (![string]::IsNullOrEmpty($currentContent)) {
+    # Remove all trailing newlines or return characters
+    while ($currentContent.EndsWith("`r") -or $currentContent.EndsWith("`n")) {
+        $currentContent = $currentContent.TrimEnd("`r", "`n")
+    }
+}
 
-    foreach ($entry in $newEntries) {
-        # Check if the entry already exists in the hosts file
-        if (-not ($currentContent -match [regex]::Escape($entry))) {
-            # Entry not found, prepare to add to the hosts file
-            $newEntriesToAdd += $entry + "`n"
+# Calculate the maximum length of the IP addresses to align the columns
+$ipMaxLength = 0
+foreach ($entry in $newEntries) {
+    $ipLength = $entry.Split(' ')[0].Length
+    if ($ipLength -gt $ipMaxLength) {
+        $ipMaxLength = $ipLength
+    }
+}
+$ipMaxLength += 8  # Add additional padding for better visibility
+
+# Initialize a variable to store any new entries that need to be added
+$newEntriesToAdd = @()
+$entriesModified = $false
+
+foreach ($entry in $newEntries) {
+    # Split the entry into IP and host name parts
+    $parts = $entry -split '\s+', 2
+    $ip = $parts[0]
+    $hostName = $parts[1].Trim()
+
+    # Format the entry with padding to align the columns
+    $formattedEntry = $ip.PadRight($ipMaxLength) + $hostName
+
+    # Check if the entry already exists in the hosts file
+    if ($currentContent -notmatch [regex]::Escape($formattedEntry)) {
+        # Entry not found, prepare to add to the hosts file
+        $newEntriesToAdd += $formattedEntry
+        $entriesModified = $true
+    }
+}
+
+# Check if there are new entries to add
+if ($entriesModified) {
+    # Combine all new entries into a single string with new lines
+    $formattedEntriesToAdd = $newEntriesToAdd -join "`r`n"
+
+    # Check for null or empty content before appending
+    if (-not [string]::IsNullOrEmpty($currentContent)) {
+        if (-not $currentContent.EndsWith("`r`n")) {
+            $currentContent += "`r`n"
         }
     }
 
-    # Check if there are new entries to add
-    if (-not [string]::IsNullOrWhiteSpace($newEntriesToAdd)) {
-        $newEntriesToAdd = $newEntriesToAdd.TrimEnd("`n")  # Remove the last new line character
+    # Add the new entries to the current content
+    $currentContent += "`r`n" + $formattedEntriesToAdd
 
-        # If the current content does not end with a newline, add one
-        if (-not $currentContent.EndsWith("`n")) {
-            $currentContent += "`n"  # Ensure there is a newline before new entries
-        }
+    # Write the updated content back to the hosts file
+    [System.IO.File]::WriteAllText($hostsPath, $currentContent)
 
-        # Add a single blank line before adding the new entries
-        $currentContent += "`n"
-
-        # Add the new entries
-        $currentContent += $newEntriesToAdd  # No additional new line at the end
-
-        # Write the updated content back to the hosts file without a trailing newline
-        [System.IO.File]::WriteAllText($hostsPath, $currentContent)
-
-        # Output the modified hosts file content to the console
-        Write-Output $currentContent
-    } else {
-        Write-Output "Values already exist in the hosts file."
-    }
+    # Output the modified hosts file content to the console
+    Write-Output $currentContent
+} else {
+    # No new entries were found that needed to be added, output a message
+    Write-Output "Values already exist, file not modified."
 }
