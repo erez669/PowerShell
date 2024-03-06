@@ -33,6 +33,12 @@ if ($env:computername.Substring(1, 2) -eq "LP") {
     $snif = $env:computername.Substring(4, 3)
 }
 
+# Check if SNIF contains 888 or if the IP address is 10.18.88.x or 10.118.88.x
+if ($snif.Contains("888") -or $env:computername -like "10.18.88.*" -or $env:computername -like "10.118.88.*") {
+    Write-Host "SNIF 888 integration was detected, hosts file was not changed."
+    exit 0
+}
+
 $ipa = $snif.Substring(0, 1)
 $ipb = $snif.Substring(1, 2)
 if ($ipb -lt 10) {
