@@ -1,17 +1,17 @@
-﻿Clear-Host
+Clear-Host
 
 do {
-    write-host "`n" # for creating space
+    Write-Host "`n"  # For creating space
     $serverName = Read-Host "Enter hostname for start or stop DHCPServer or write 'q' letter and press enter to exit this script"
 
     if ($serverName -eq 'q') {
-    Write-Host "Exiting."
-    break
+        Write-Host "Exiting."
+        break
     }
 
     Write-Host "Press 0 to stop DHCPServer, press 1 to enable it, press q to exit this script"
 
-    $keyPress = [System.Console]::ReadKey($true) # for suppress the "Enter" key after pressing the command
+    $keyPress = [System.Console]::ReadKey($true)  # Suppress the "Enter" key after pressing the command
     $key = $keyPress.KeyChar
 
     if ($key -eq '0') {
@@ -21,7 +21,6 @@ do {
     } elseif ($key -eq 'q') {
         Write-Host "Exiting."
         break
-
     } else {
         Write-Host "Invalid key pressed. Try again."
         continue
@@ -29,16 +28,26 @@ do {
 
     # Define the script block to execute remotely
     $scriptBlock = {
-        param ($serverName, $action)
+    param ($serverName, $action)
+    try {
+        # This will set the service to manual start whether starting or stopping
+        Write-Host "Setting DHCPServer to manual start."
+        Set-Service -Name DHCPServer -StartupType Manual -Verbose
+
         if ($action -eq "start") {
-            Write-Host "Starting DHCPServer"
+            Write-Host "Starting DHCPServer."
             Start-Service -Name DHCPServer -Verbose
-        }
-        if ($action -eq "stop") {
-            Write-Host "Stopping DHCPServer"
+        } elseif ($action -eq "stop") {
+            Write-Host "Stopping DHCPServer."
             Stop-Service -Name DHCPServer -Verbose
+        } else {
+            Write-Host "Invalid action specified."
         }
+    } catch {
+        Write-Host "Error: $($_.Exception.Message)"
+        exit 1
     }
+}
 
     try {
         # Execute the script block remotely
