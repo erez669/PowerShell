@@ -1,7 +1,7 @@
-﻿Clear-Host
+Clear-Host
 
 # Path to the output CSV
-$outputCsv = "C:\temp\Versions.csv"
+$outputCsv = "C:\temp\POS_Version.csv"
 
 # Ensure the C:\temp directory exists
 if (-not (Test-Path "C:\temp")) {
@@ -16,7 +16,7 @@ if (Test-Path $outputCsv) {
 }
 
 # Load device names from a text file
-$deviceNames = Get-Content "\\10.251.10.251\supergsrv\HdMatte\PowerShell\Servers.txt"
+$deviceNames = Get-Content "\\10.251.10.251\supergsrv\HdMatte\PowerShell\POSList.txt"
 
 # Prepare an array to hold the output data
 $results = @()
