@@ -6,13 +6,13 @@ $outputCsv = "C:\temp\POS_Version.csv"
 # Ensure the C:\temp directory exists
 if (-not (Test-Path "C:\temp")) {
     New-Item -Path "C:\temp" -ItemType Directory -Force -Verbose
-    Write-Output "C:\temp directory created."
+    Write-Host "C:\temp directory created."
 }
 
 # Check if the output CSV file exists and delete it
 if (Test-Path $outputCsv) {
-    Remove-Item $outputCsv
-    Write-Output "Existing output file deleted."
+    Remove-Item $outputCsv -Force -Verbose
+    Write-Host "Existing output file deleted."
 }
 
 # Load device names from a text file
@@ -23,66 +23,54 @@ $results = @()
 
 # Loop through each device name
 foreach ($deviceName in $deviceNames) {
-    Write-Output "Processing device $deviceName"
+    Write-Host "`nProcessing device $deviceName"
+
+    # Initialize the version variable
+    $version = $null
 
     # Test the connection to the device first
     if (Test-Connection -ComputerName $deviceName -Count 1 -Quiet) {
-        $osArchitecture = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $deviceName | Select-Object -ExpandProperty OSArchitecture
-        Write-Output $osArchitecture
-
-        if ($osArchitecture -like "*64-bit*") {
-            $programFilesPath = "\\$deviceName\C$\Program Files (x86)"
-        } else {
-            $programFilesPath = "\\$deviceName\C$\Program Files"
-        }
-
-        $basePathSCO = "\Retalix\SCO.NET\App\SCO.exe"
-        $defaultPath = "\retalix\wingpos\GroceryWinPos.exe"
-
-        if ($deviceName -like "*SCO") {
-            $fullPath = $programFilesPath + $basePathSCO
-        } elseif ($deviceName -like "*CSS") {
-            $fullPath = $programFilesPath + $basePathSCO
-        } else {
-            $fullPath = "\\$deviceName\C$" + $defaultPath
-        }
-
-        if ($fullPath -and (Test-Path $fullPath)) {
-            try {
-                Write-Output "Checking version for $fullPath"
-                $version = (Get-ItemProperty $fullPath -ErrorAction Stop).VersionInfo.ProductVersion
-                if ($version) {
-                    Write-Output "Version found for $fullPath : $version"
-                    $results += [PSCustomObject]@{
-                        DeviceName = $deviceName
-                        Version = $version
-                    }
-                } else {
-                    Write-Output "No version found for: $fullPath"
-                }
-            } catch {
-                Write-Output "Error processing $fullPath : $_"
+        try {
+            # Attempt to get the OS Architecture only for SCO or CSS devices
+            if ($deviceName -like "*SCO" -or $deviceName -like "*CSS") {
+                $osArchitecture = (Get-WmiObject -Class Win32_OperatingSystem -ComputerName $deviceName).OSArchitecture
+                Write-Host "OS Architecture: $osArchitecture"
+                $programFilesPath = if ($osArchitecture -eq "64-bit") { "\\$deviceName\C$\Program Files (x86)" } else { "\\$deviceName\C$\Program Files" }
+                $fullPath = Join-Path $programFilesPath "Retalix\SCO.NET\App\SCO.exe"
+            } else {
+                $fullPath = "\\$deviceName\C$\retalix\wingpos\GroceryWinPos.exe"
             }
-        } else {
-            Write-Output "Device is out of domain for $deviceName or path not found"
-            $results += [PSCustomObject]@{
-                DeviceName = $deviceName
-                Version = "Device is out of domain or path not found"
+
+            # Check if the executable path exists and if so, get the version
+            if (Test-Path $fullPath) {
+                $fileVersionInfo = (Get-Item $fullPath).VersionInfo
+                $version = $fileVersionInfo.ProductVersion
+                Write-Host "Version found for $fullPath : $version"
+            } else {
+                $version = "Device is out of domain or path not found"
+                Write-Host "Executable path not found: $fullPath"
             }
+        } catch {
+            Write-Host "Error occurred while processing $deviceName : $_"
+            $version = "WMI error or inaccessible"
         }
     } else {
-        Write-Output "No ping response from device $deviceName"
-        $results += [PSCustomObject]@{
-            DeviceName = $deviceName
-            Version = "Device not communicating"
-        }
+        $version = "Device not communicating"
+        Write-Host "$deviceName is not communicating."
     }
+
+    # Add the results for this device to the results array
+    $obj = New-Object PSObject
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name DeviceName -Value $deviceName
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name Version -Value $version
+    
+    $results += $obj
 }
 
 # Export results to CSV
 if ($results.Count -gt 0) {
-    $results | Export-Csv $outputCsv -NoTypeInformation
-    Write-Output "Data exported to $outputCsv"
+    $results | Export-Csv $outputCsv -NoTypeInformation -Verbose
+    Write-Host "Data exported to $outputCsv"
 } else {
-    Write-Output "No data to export."
+    Write-Host "No data to export."
 }
