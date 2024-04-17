@@ -31,24 +31,27 @@ foreach ($deviceName in $deviceNames) {
     # Test the connection to the device first
     if (Test-Connection -ComputerName $deviceName -Count 1 -Quiet) {
         try {
-            # Attempt to get the OS Architecture only for SCO or CSS devices
-            if ($deviceName -like "*SCO" -or $deviceName -like "*CSS") {
+            if ($deviceName -like "*SCO") {
+                # Determine the path based on architecture for SCO devices
                 $osArchitecture = (Get-WmiObject -Class Win32_OperatingSystem -ComputerName $deviceName).OSArchitecture
                 Write-Host "OS Architecture: $osArchitecture"
-                $programFilesPath = if ($osArchitecture -eq "64-bit") { "\\$deviceName\C$\Program Files (x86)" } else { "\\$deviceName\C$\Program Files" }
-                $fullPath = Join-Path $programFilesPath "Retalix\SCO.NET\App\SCO.exe"
+                $programFilesPath = if ($osArchitecture -eq "64-bit") { "\\$deviceName\C$\Program Files (x86)\Retalix\SCO.NET\App\SCO.exe" } else { "\\$deviceName\C$\Program Files\Retalix\SCO.NET\App\SCO.exe" }
+            } elseif ($deviceName -like "*CSS") {
+                # Set path directly for CSS devices, always 64-bit
+                $programFilesPath = "\\$deviceName\C$\Program Files (x86)\Retalix\SCO.NET\App\SCO.exe"
             } else {
-                $fullPath = "\\$deviceName\C$\retalix\wingpos\GroceryWinPos.exe"
+                # Default path for other devices
+                $programFilesPath = "\\$deviceName\C$\retalix\wingpos\GroceryWinPos.exe"
             }
 
             # Check if the executable path exists and if so, get the version
-            if (Test-Path $fullPath) {
-                $fileVersionInfo = (Get-Item $fullPath).VersionInfo
+            if (Test-Path $programFilesPath) {
+                $fileVersionInfo = (Get-Item $programFilesPath).VersionInfo
                 $version = $fileVersionInfo.ProductVersion
-                Write-Host "Version found for $fullPath : $version"
+                Write-Host "Version found for $programFilesPath : $version"
             } else {
                 $version = "Device is out of domain or path not found"
-                Write-Host "Executable path not found: $fullPath"
+                Write-Host "Executable path not found: $programFilesPath"
             }
         } catch {
             Write-Host "Error occurred while processing $deviceName : $_"
