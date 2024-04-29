@@ -80,7 +80,7 @@ function Get-Version($deviceName, $programFilesPath) {
             }
         }
     }
-    Write-Warning "Max 3 retries reached for $deviceName, no version found."
+    Write-Warning "Max $maxRetries retries reached for $deviceName, no version found."
     return $null
 }
 
@@ -98,6 +98,7 @@ $results = New-Object System.Collections.Generic.List[psobject]
 
 # Loop through each device name
 foreach ($deviceName in $deviceNames) {
+    $maxRetries = 3
     Write-Host "`nProcessing device $deviceName"
     
     # Check the connection to the device and get the version
@@ -106,7 +107,7 @@ foreach ($deviceName in $deviceNames) {
         if ($programFilesPath) {
             $version = Get-Version $deviceName $programFilesPath
             if ($null -eq $version) {
-                Write-Warning "Version not found for $deviceName after 3 retries."
+                Write-Warning "Version not found for $deviceName after $maxRetries retries."
                 $version = "Device might be out of domain or path not found"
             } else {
                 Write-Host "Version found for $programFilesPath : $version"
@@ -116,7 +117,7 @@ foreach ($deviceName in $deviceNames) {
             $version = "The specified network name is no longer available"
         }
     } else {
-        Write-Warning "$deviceName is not communicating after 3 retries."
+        Write-Warning "$deviceName is not communicating after $maxRetries retries."
         $version = "Device is Not Communicating"
     }
     
