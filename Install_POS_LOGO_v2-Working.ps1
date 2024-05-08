@@ -1,45 +1,32 @@
-If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
-
-{   
-$arguments = "& '" + $myinvocation.mycommand.definition + "'"
-Start-Process powershell -Verb runAs -ArgumentList $arguments
-Break
+# Elevate the script if not run as administrator
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    $arguments = "& '" + $MyInvocation.MyCommand.Definition + "'"
+    Start-Process powershell -Verb runAs -ArgumentList $arguments
+    break
 }
 
 $VerbosePreference = 'Continue'
+Clear-Host
 
-# Set hostname and initialize variables to $null
+# Initialize essential variables
 $hostname = $env:COMPUTERNAME
-$logo2 = $null
-$xmlPath = $null 
-$backupPath = $null
 $initialDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-# Kill tasks
-Stop-Process -Name "GroceryWinPos" -Force -ErrorAction SilentlyContinue -Verbose
-Stop-Process -Name "sco" -Force -ErrorAction SilentlyContinue -Verbose
-Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue -Verbose
+# Kill certain processes
+Stop-Process -Name "GroceryWinPos", "sco", "java" -Force -ErrorAction SilentlyContinue -Verbose
 
-# Sleep (Replicating 'call :sleep' - assuming it's a sleep function)
+# Pause for effect
 Start-Sleep -Seconds 10 -Verbose
 
-# Run kupalogo.exe
-$scriptDir = $initialDir
-Write-Host "The script directory is: $scriptDir"
-Start-Process -FilePath "$scriptDir\kupalogo.exe" -NoNewWindow:$false -Wait:$false
-Write-Verbose "After kupalogo.exe"
+# Execute an application
+Start-Process -FilePath "$initialDir\kupalogo.exe" -NoNewWindow:$false -Wait:$false -Verbose
 
-# Initialize
+# Active Directory Setup
 Add-Type -AssemblyName "System.DirectoryServices"
 $branch = $hostname.Substring(4, 3)
-$exitCode = 0
-
-# LDAP Query
 $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://rootDse")
 $domain = $root.dnsHostName
 $branchGroup = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domain/cn=branch_$branch,ou=branch groups,ou=group objects,ou=OUs,dc=posprod,dc=supersol,dc=co,dc=il")
-
-$branchGroup.memberof | ForEach-Object { $groupName = ($_ -split ',')[0] -replace 'CN=', ''}
 
 # Collect group names
 $collectedGroups = @()
@@ -48,38 +35,38 @@ foreach ($groupDN in $branchGroup.memberof) {
     $collectedGroups += $simpleGroupName.ToUpper()
 }
 
-# Loop through collected group names to set $exitCode
+# Determine the exit code based on group membership
+$exitCode = 0
 foreach ($groupName in $collectedGroups) {
+    Write-Verbose "Processing group: $groupName"
     switch ($groupName) {
-        "NET_SUPERSOL_DEAL"          { $exitCode = 2; break }
-        "NET_SUPERSOL_MINE"          { $exitCode = 3; break }
-        "NET_SUPERSOL_YESH_HESSED"   { $exitCode = 4; break }
-        "NET_SUPERSOL_YESH"          { $exitCode = 5; break }
-        "NET_SUPERSOL_EXPRESS"       { $exitCode = 6; break }
-        "NET_SUPERSOL_SHAAREVACHA"   { $exitCode = 7; break }
-        "NET_ORGANIC_MARKET"         { $exitCode = 8; break }
-        "NET_SUPERSOL_NEW_PHARM"     { $exitCode = 9; break }
-        "NET_SUPERSOL_GIDRON"        { $exitCode = 10; break }
-        "NET_SUPERSOL_CASH_CARRY"    { $exitCode = 11; break }
-        "NET_SUPERSOL_ONLINE"        { $exitCode = 12; break }
-        "NET_BELA_STORE"             { $exitCode = 13; break }
-        "NET_SUPERSOL_TRIGO"         { $exitCode = 14; break }
-        "NET_SUPERSOL_GOOD_MARKET"   { $exitCode = 15; break }
+        "NET_SUPERSOL_DEAL"           { $exitCode = 2; break }
+        "NET_SUPERSOL_MINE"           { $exitCode = 3; break }
+        "NET_SUPERSOL_YESH_HESSED"    { $exitCode = 4; break }
+        "NET_SUPERSOL_YESH"           { $exitCode = 5; break }
+        "NET_SUPERSOL_EXPRESS"        { $exitCode = 6; break }
+        "NET_SUPERSOL_SHAAREVACHA"    { $exitCode = 7; break }
+        "NET_ORGANIC_MARKET"          { $exitCode = 8; break }
+        "NET_SUPERSOL_NEW_PHARM"      { $exitCode = 9; break }
+        "NET_SUPERSOL_GIDRON"         { $exitCode = 10; break }
+        "NET_SUPERSOL_CASH_CARRY"     { $exitCode = 11; break }
+        "NET_SUPERSOL_ONLINE"         { $exitCode = 12; break }
+        "NET_BELA_STORE"              { $exitCode = 13; break }
+        "NET_SUPERSOL_TRIGO"          { $exitCode = 14; break }
+        "NET_SUPERSOL_GOOD_MARKET"    { $exitCode = 15; break }
+        "NET_SUPERSOL_THEDISTRIBUTOR" { $exitCode = 16; break }
+        default                       { Continue }
     }
-
-    if ($exitCode) { break }  # Exit loop if $exitCode is set
+    Write-Verbose "Exit code set to $exitCode for $groupName"
+    if ($exitCode) { break }
 }
 
-Write-Host "LDAP Group Name: $groupName"
-Write-Host "Exit Code: $exitCode"
+Write-Host "Last LDAP Group Name Processed: $groupName"  # This will show the last group processed that set an exit code
+Write-Host "Exit Code: $exitCode"  # This will display the final exit code
 
 # Map $exitCode to $logo2 (Modify this mapping as needed)
 $logo2 = $exitCode
 Write-Host "Logo2 is set to $logo2"
-
-# Get script's directory
-# $scriptDir = (Get-Location).Path
-# Write-Host "The script directory is: $scriptDir"
 
 # Mapping from exitCode to executable names for non-SCO/CSS
 $exitCodeToExeMap = @{
@@ -93,6 +80,7 @@ $exitCodeToExeMap = @{
     13 = "Go to Bela logic"
     14 = "Trigo.exe"
     15 = "Screen_GoodMarket.exe"
+    16 = "Screen_TheDistributor.exe"
     #... (Add other cases)
 }
 
@@ -103,13 +91,13 @@ $exitCodeToSCOFileMap = @{
     4 =  "YESH_Hessed.exe"
     5 =  "YESH_Bashchuna.exe"
     6 =  "Shufersal.exe"
-    7 =  "Shufersal.exe"
+    7 =  "Shaarey_Revacha.exe"
     9 =  "NEWPHARM.exe"
     11 = "Shufersal.exe"
     13 = "NEWPHARM.exe"
     14 = "Shufersal.exe"
     15 = "GoodMarket.exe"
-    16 = "Shufersal.exe"
+    16 = "TheDistributor.exe"
 }
 
 # Mapping from exitCode to filename
@@ -125,7 +113,7 @@ $exitCodeToFileMap = @{
     13 = "Bela"
     14 = "Trigo"
     15 = "GoodMarket"
-    16 = "superexpressSmall"
+    16 = "TheDistributor"
 }
 
 # Fetch the filename based on exitCode
@@ -139,11 +127,10 @@ Write-Verbose "Before checking computerNameSuffix"
 
 if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
     $version = (Get-WmiObject -Query "SELECT * FROM Win32_OperatingSystem").Version
-    $architecture = (Get-WmiObject -Query "SELECT * FROM Win32_Processor").AddressWidth
+    # $architecture = (Get-WmiObject -Query "SELECT * FROM Win32_Processor").AddressWidth
     Write-Verbose "OS version is $version"
     
     $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition  # Get script location
-    # $dir = "Shufersal"
 
     $versionMajorMinor = ($version -split "\.")[0..1] -join "."
 
@@ -228,7 +215,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
         [xml]$xmlContent = Get-Content -Path $xmlPath
         $bitmapNode = $xmlContent.SelectSingleNode("//Printer/@BitmapFile")
         
-        if ($bitmapNode -ne $null) {
+        if ($null -ne $bitmapNode) {
             $fileName = $exitCodeToFileMap[$logo2]
             $newBitmapValue = Join-Path (Split-Path $xmlPath) "PRINTIMAGES\$fileName.bmp"
             
@@ -251,7 +238,7 @@ if ($computerNameSuffix -eq "SCO" -or $computerNameSuffix -eq "CSS") {
 $newBitmapValue = "C:\Retalix\WinGPOS\files\Images\Printing\$fileName.bmp"
 
 # Execute the mapped executable if not null
-if ($executable -ne $null) {
+if ($null -ne $executable) {
     if ($executable -eq "Go to Bela logic" -and $exitCode -eq 13) {
         # Bela-specific logic
         $xmlPath = "C:\retalix\wingpos\Files\devices\EpsonOPOSConfig.xml"
@@ -314,7 +301,7 @@ if (Test-Path "c:\retalix") {
 
 # Load the XML file into $content if not already loaded
 $xmlPath = "C:\retalix\wingpos\Files\devices\EpsonOPOSConfig.xml"
-if ($content -eq $null) {
+if ($null -eq $content) {
     [xml]$content = Get-Content $xmlPath
 }
 
@@ -322,7 +309,7 @@ if ($content -eq $null) {
 if (Test-Path $xmlPath) {
     # Existing logic to find the POSPrinter node
     $printerNode = $content.SelectSingleNode("//POSDeviceList/POSPrinter")
-    if ($printerNode -ne $null) {
+    if ($null -ne $printerNode) {
         Write-Verbose "Found POSPrinter node."
         $backupPath = "$xmlPath.bak"
         if (Test-Path $backupPath) {
