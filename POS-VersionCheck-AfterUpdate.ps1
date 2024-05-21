@@ -1,5 +1,31 @@
 Clear-Host
 
+# Function to compare the first three parts of the version numbers
+function Compare-VersionParts {
+    param([string]$version1, [string]$version2)
+    $v1Parts = $version1 -split '\.'
+    $v2Parts = $version2 -split '\.'
+
+    # Only compare the first three parts
+    $v1Parts = $v1Parts[0..2]
+    $v2Parts = $v2Parts[0..2]
+
+    # Ensure both versions have the same number of parts for comparison
+    while ($v1Parts.Count -lt $v2Parts.Count) {
+        $v1Parts += "0"
+    }
+    while ($v2Parts.Count -lt $v1Parts.Count) {
+        $v2Parts += "0"
+    }
+
+    for ($i = 0; $i -lt $v1Parts.Count; $i++) {
+        if ([int]$v1Parts[$i] -ne [int]$v2Parts[$i]) {
+            return $false
+        }
+    }
+    return $true
+}
+
 # Get the hostname
 $hostname = $env:COMPUTERNAME
 
@@ -56,7 +82,7 @@ if ($hostname -like "POS*") {
         exit 4
     }
 
-    # Expected version 
+    # Expected version
     $expectedVersion = $args[0]
 
     # Loop through each path
@@ -66,19 +92,17 @@ if ($hostname -like "POS*") {
 
         if (Test-Path $path) {
             # Get full version string
-            $fullVersion = (Get-Item $path).VersionInfo.FileVersion
+            $fullVersion = (Get-Item $path).VersionInfo.ProductVersion
 
-            # Check if version matches expected
-            if ($fullVersion -notmatch "^$expectedVersion") {
-                Write-Host "Incorrect version was found at $path"
+            # Compare only the first three parts of the version
+            if (-not (Compare-VersionParts $fullVersion $expectedVersion)) {
+                Write-Host "Incorrect version found at $path : $fullVersion"
                 exit 6 
-            }
-            else {
+            } else {
                 Write-Host "Correct version $expectedVersion found at $path"
                 exit 0
             }
-        }
-        else {
+        } else {
             # Output if file not found
             Write-Host "File not found at path: $path" 
         }
@@ -89,8 +113,7 @@ if ($hostname -like "POS*") {
         Write-Host "No executable path found for device type $suffix"
         exit 4
     }
-}
-else {
+} else {
     # Hostname does not start with "POS", script ends without further action
     Write-Host "Hostname does not start with 'POS', exiting script."
     exit 0
