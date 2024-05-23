@@ -1,65 +1,100 @@
-# Get the ID and security principal of the current user account
-$myWindowsID=[System.Security.Principal.WindowsIdentity]::GetCurrent()
-$myWindowsPrincipal=new-object System.Security.Principal.WindowsPrincipal($myWindowsID)
-
-# Get the security principal for the Administrator role
-$adminRole=[System.Security.Principal.WindowsBuiltInRole]::Administrator
-
-# Check to see if we are currently running "as Administrator"
-if ($myWindowsPrincipal.IsInRole($adminRole))
-{
-   # We are running "as Administrator" - so change the title and background color to indicate this
-   $Host.UI.RawUI.WindowTitle = $myInvocation.MyCommand.Definition + "(Elevated)"
-   $Host.UI.RawUI.BackgroundColor = "DarkBlue"
-   clear-host
-}
-else
-{
-   # We are not running "as Administrator" - so relaunch as administrator
-
-   # Create a new process object that starts PowerShell
-   $newProcess = new-object System.Diagnostics.ProcessStartInfo "PowerShell";
-
-   # Specify the current script path and name as a parameter
-   $newProcess.Arguments = $myInvocation.MyCommand.Definition;
-
-   # Indicate that the process should be elevated
-   $newProcess.Verb = "runas";
-
-   # Start the new process
-   [System.Diagnostics.Process]::Start($newProcess);
-
-   # Exit from the current, unelevated, process
-   exit
+# Function to set language and region settings
+function Set-LanguageAndRegion {
+    Import-Module International
+    $LangList = Get-WinUserLanguageList
+    $MarkedLang = $LangList | Where-Object LanguageTag -eq "he"
+    if ($MarkedLang) {
+        $LangList.Remove($MarkedLang)
+    }
+    Set-WinUserLanguageList $LangList -Force
+    $languageList = New-WinUserLanguageList -Language he-IL
+    $languageList[0].InputMethodTips.Clear()
+    Set-WinUserLanguageList he-IL -Force
+    $LangList.Add("en-US")
+    $LangList.Add("he-IL")
+    Set-WinUserLanguageList -LanguageList $LangList -Force
+    Set-WinUserLanguageList -LanguageList en-US, he-IL -Force
+    Set-WinSystemLocale -SystemLocale he-IL
+    Set-WinHomeLocation -GeoId 117
+    Set-WinCultureFromLanguageListOptOut -OptOut 0
+    Set-WinUILanguageOverride -Language en-US
+    Set-WinDefaultInputMethodOverride -InputTip "0409:00000409"
+    Set-Culture 'he-IL'
 }
 
-Import-Module International
-$LangList = Get-WinUserLanguageList
-$MarkedLang = $LangList | where LanguageTag -eq "he"
-$LangList.Remove($MarkedLang)
-Set-WinUserLanguageList $LangList -Force
-$languageList = New-WinUserLanguageList -Language he-IL
-$languageList[0].InputMethodTips.Clear()
-Set-WinUserLanguageList he-IL -Force
-$LangList.Add("en-US")
-$LangList.Add("he-IL")
-Set-WinUserLanguageList -LanguageList $LangList -Force
-Set-WinUserLanguageList -LanguageList en-US, he-IL -force
-Set-WinSystemLocale -systemlocale he-IL
-Set-WinHomeLocation -GeoId 117
-Set-WinCultureFromLanguageListOptOut -OptOut 0
-Set-WinUILanguageOverride -Language en-US
-Set-WinDefaultInputMethodOverride -InputTip "0409:00000409"
-set-culture 'he-IL'
+# Apply language and region settings
+Set-LanguageAndRegion
 
 # Changing the WelcomeScreen to fit the default layout
-REG DELETE "HKEY_USERS\.DEFAULT\Keyboard Layout\Preload" /f
-REG LOAD "HKU\DefaultUserTemplate" "C:\Users\Default\ntuser.dat"
-REG DELETE "HKU\DefaultUserTemplate\Keyboard Layout\Preload" /f
-REG ADD "HKU\DefaultUserTemplate\Keyboard Layout\Preload" /f
-REG ADD "HKU\DefaultUserTemplate\Keyboard Layout\Preload" /v "1" /t REG_SZ /d 00000409 /f
-REG ADD "HKU\DefaultUserTemplate\Keyboard Layout\Preload" /v "2" /t REG_SZ /d 0000040d /f
-REG UNLOAD "HKU\DefaultUserTemplate"
-Write-Output "Successfully Changing the default keyboard layout"
-& $env:SystemRoot\System32\control.exe "intl.cpl,,/f:"\\10.251.10.251\supergsrv\HdMatte\PowerShell\Lang.xml""
-& $env:SystemRoot\System32\control.exe "intl.cpl,,1"
+$preloadKey = "Registry::HKEY_USERS\.DEFAULT\Keyboard Layout\Preload"
+if (Test-Path $preloadKey) {
+    Remove-Item $preloadKey -Force
+}
+New-Item -Path $preloadKey -Force
+New-ItemProperty -Path $preloadKey -Name "1" -Value "00000409" -Force
+New-ItemProperty -Path $preloadKey -Name "2" -Value "0000040d" -Force
+
+$substitutesKey = "Registry::HKEY_USERS\.DEFAULT\Keyboard Layout\Substitutes"
+if (-Not (Test-Path $substitutesKey)) {
+    New-Item -Path $substitutesKey -Force
+}
+New-ItemProperty -Path $substitutesKey -Name "00000409" -Value "00000409" -Force
+New-ItemProperty -Path $substitutesKey -Name "0000040d" -Value "0000040d" -Force
+
+$defaultUserTemplate = "C:\Users\Default\ntuser.dat"
+if (Test-Path $defaultUserTemplate) {
+    Start-Process "reg.exe" -ArgumentList "load HKU\DefaultUserTemplate $defaultUserTemplate" -Wait -NoNewWindow
+    
+    $templatePreloadKey = "Registry::HKU\DefaultUserTemplate\Keyboard Layout\Preload"
+    if (Test-Path $templatePreloadKey) {
+        Remove-Item $templatePreloadKey -Force
+    }
+    New-Item -Path $templatePreloadKey -Force
+    New-ItemProperty -Path $templatePreloadKey -Name "1" -Value "00000409" -Force
+    New-ItemProperty -Path $templatePreloadKey -Name "2" -Value "0000040d" -Force
+
+    $templateSubstitutesKey = "Registry::HKU\DefaultUserTemplate\Keyboard Layout\Substitutes"
+    if (-Not (Test-Path $templateSubstitutesKey)) {
+        New-Item -Path $templateSubstitutesKey -Force
+    }
+    New-ItemProperty -Path $templateSubstitutesKey -Name "00000409" -Value "00000409" -Force
+    New-ItemProperty -Path $templateSubstitutesKey -Name "0000040d" -Value "0000040d" -Force
+
+    # Apply settings for the welcome screen and new user accounts using PowerShell
+    Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International" -Name "Locale" -Value "0000040d"
+    Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International" -Name "LocaleName" -Value "he-IL"
+    Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International" -Name "sCountry" -Value "Israel"
+    Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International" -Name "sLanguage" -Value "HEB"
+    Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International\User Profile" -Name "InputMethodOverride" -Value "0409:00000409"
+
+    # Unload the hive and ensure it's unloaded
+    $unloaded = $false
+    while (-not $unloaded) {
+        Start-Process "reg.exe" -ArgumentList "unload HKU\DefaultUserTemplate" -Wait -NoNewWindow
+        Start-Sleep -Seconds 1
+        $unloaded = -not (Test-Path "HKU:\DefaultUserTemplate")
+    }
+}
+
+Write-Output "Successfully changed the default keyboard layout"
+
+# Automate "Copy settings..." step by setting the appropriate registry keys
+$path = "HKCU:\Control Panel\International\Geo"
+if (-Not (Test-Path $path)) { New-Item -Path $path -Force }
+Set-ItemProperty -Path $path -Name "Nation" -Value 117 -Force
+
+$path = "HKCU:\Control Panel\International"
+if (-Not (Test-Path $path)) { New-Item -Path $path -Force }
+Set-ItemProperty -Path $path -Name "Locale" -Value "0000040d" -Force
+Set-ItemProperty -Path $path -Name "LocaleName" -Value "he-IL" -Force
+Set-ItemProperty -Path $path -Name "sCountry" -Value "Israel" -Force
+Set-ItemProperty -Path $path -Name "sLanguage" -Value "HEB" -Force
+
+# Apply settings for the welcome screen and new user accounts using PowerShell
+Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International" -Name "Locale" -Value "0000040d" -Force
+Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International" -Name "LocaleName" -Value "he-IL" -Force
+Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International" -Name "sCountry" -Value "Israel" -Force
+Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International" -Name "sLanguage" -Value "HEB" -Force
+Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International\User Profile" -Name "InputMethodOverride" -Value "0409:00000409" -Force
+
+Write-Output "Successfully applied language settings to all profiles"
