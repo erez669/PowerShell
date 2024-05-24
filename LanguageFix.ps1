@@ -1,3 +1,11 @@
+If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+
+{   
+$arguments = "& '" + $myinvocation.mycommand.definition + "'"
+Start-Process powershell -Verb runAs -ArgumentList $arguments
+Break
+}
+
 Clear-Host
 
 # Function to set language and region settings
@@ -69,11 +77,15 @@ if (Test-Path $defaultUserTemplate) {
     Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International" -Name "sLanguage" -Value "HEB"
     Set-ItemProperty -Path "Registry::HKU\DefaultUserTemplate\Control Panel\International\User Profile" -Name "InputMethodOverride" -Value "0409:00000409"
 
+    # Close any open handles and perform garbage collection before unloading the hive
+    [gc]::Collect()
+    Start-Sleep -Seconds 3
+
     # Unload the hive and ensure it's unloaded
     $unloaded = $false
     while (-not $unloaded) {
         Start-Process "reg.exe" -ArgumentList "unload HKU\DefaultUserTemplate" -Wait -NoNewWindow
-        Start-Sleep -Seconds 1
+        Start-Sleep -Seconds 2
         $unloaded = -not (Test-Path "HKU:\DefaultUserTemplate")
     }
 }
@@ -100,3 +112,4 @@ Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\Internationa
 Set-ItemProperty -Path "Registry::HKEY_USERS\.DEFAULT\Control Panel\International\User Profile" -Name "InputMethodOverride" -Value "0409:00000409" -Force
 
 Write-Output "Successfully applied language settings to all profiles"
+Start-Sleep -Seconds 5
