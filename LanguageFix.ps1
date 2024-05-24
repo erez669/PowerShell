@@ -1,9 +1,12 @@
 function Set-LanguageAndRegion {
     Import-Module International
-    
+
     # Remove the Hebrew language if already present
     $LangList = Get-WinUserLanguageList
-    $LangList = $LangList | Where-Object LanguageTag -ne "he"
+    $HebrewLang = $LangList | Where-Object LanguageTag -eq "he-IL"
+    if ($HebrewLang) {
+        $LangList.Remove($HebrewLang)
+    }
 
     # Set the primary language and input method
     $languageList = New-WinUserLanguageList -Language he-IL
@@ -47,7 +50,7 @@ function Update-DefaultUserRegistry {
     $defaultUserTemplate = "C:\Users\Default\ntuser.dat"
     if (Test-Path $defaultUserTemplate) {
         Start-Process "reg.exe" -ArgumentList "load HKU\DefaultUserTemplate $defaultUserTemplate" -Wait -NoNewWindow
-        
+
         # Modify the default user template registry settings
         $templatePreloadKey = "Registry::HKU\DefaultUserTemplate\Keyboard Layout\Preload"
         if (Test-Path $templatePreloadKey) {
