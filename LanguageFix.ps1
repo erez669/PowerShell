@@ -1,20 +1,20 @@
 function Set-LanguageAndRegion {
     Import-Module International
     
-    # Remove the language if already present
+    # Remove the Hebrew language if already present
     $LangList = Get-WinUserLanguageList
     $LangList = $LangList | Where-Object LanguageTag -ne "he"
-    
+
     # Set the primary language and input method
     $languageList = New-WinUserLanguageList -Language he-IL
     $languageList[0].InputMethodTips.Clear()
     Set-WinUserLanguageList $languageList -Force
-    
+
     # Add secondary languages
     $LangList.Add("en-US")
     $LangList.Add("he-IL")
     Set-WinUserLanguageList -LanguageList $LangList -Force
-    
+
     # Set other regional settings
     Set-WinSystemLocale -SystemLocale he-IL
     Set-WinHomeLocation -GeoId 117
