@@ -1,4 +1,4 @@
-﻿Clear-Host
+Clear-Host
 
 # Function to check hostname suffix using regex
 function Test-HostnameSuffix {
@@ -10,7 +10,7 @@ function Test-HostnameSuffix {
     Write-Host "Extracted last three characters: $lastThreeDigits" -ForegroundColor Cyan
 
     $suffixes = @("200", "201", "137", "138", "139")
-    $prefixesToExclude = @("MHM", "LCD", "LCDQ", "CNC")
+    $prefixesToExclude = @("MHM", "LCD", "LCDQ", "CNC", "MKS")
     $prefixesToCheckSuffix = @("WKS")
 
     # Check if hostname starts with any of the prefixes to exclude
