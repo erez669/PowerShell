@@ -48,6 +48,12 @@ if (-not (Test-Admin)) {
     exit
 }
 
+# Check if hostname is WLPOSSRV888 (case insensitive)
+if ($env:COMPUTERNAME -ieq "WLPOSSRV888") {
+    Write-Host "Hostname is WLPOSSRV888. Exiting with code 0." -ForegroundColor Yellow
+    exit 0
+}
+
 # Check the hostname suffix
 if (Test-HostnameSuffix) {
     Write-Host "Hostname ends with specified suffix or starts with excluded prefix. Exiting with code 7." -ForegroundColor Yellow
@@ -56,16 +62,24 @@ if (Test-HostnameSuffix) {
 
 Write-Host "Script is running with Administrator privileges." -ForegroundColor Green
 
-# Check if the folder exists before attempting to delete it
-$folderPath = "C:\PS"
+# Function to check and delete folder if it exists
+function Remove-Folder {
+    param (
+        [string]$folderPath
+    )
 
-if (Test-Path $folderPath) {
-    try {
-        Remove-Item -Path $folderPath -Recurse -Force
-        Write-Output "Folder C:\PS and its contents have been deleted successfully."
-    } catch {
-        Write-Error "An error occurred: $_"
+    if (Test-Path $folderPath) {
+        try {
+            Remove-Item -Path $folderPath -Recurse -Force
+            Write-Output "Folder $folderPath and its contents have been deleted successfully."
+        } catch {
+            Write-Error "An error occurred while deleting $folderPath : $_"
+        }
+    } else {
+        Write-Output "The folder $folderPath does not exist."
     }
-} else {
-    Write-Output "The folder C:\PS does not exist."
 }
+
+# Check and delete folders
+Remove-Folder -folderPath "C:\PS"
+Remove-Folder -folderPath "D:\ivantishare\PS"
