@@ -10,9 +10,6 @@ $csvContent | Format-Table
 # Specify your DNS servers
 $DNSServers = "10.250.207.150", "10.250.207.151", "10.250.207.152"
 
-# Specify the CSV file path
-$csvFilePath = "\\10.251.10.251\supergsrv\HdMatte\PowerShell\Wall_Shopic.csv"
-
 # Import the CSV file
 $csv = Import-Csv -Path $csvFilePath
 
