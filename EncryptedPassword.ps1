@@ -13,6 +13,13 @@ if ($hostname -notmatch "CSS$") {
 
 Clear-Host
 
+# uncomment next 4 lines to create the encrypted password file, after creation, you can remove this lines or comment them again
+
+# $encryptionKey = [byte[]]@(1..32)
+# $password = Read-Host -AsSecureString "Enter the password to encrypt"
+# $encrypted = ConvertFrom-SecureString -SecureString $password -Key $encryptionKey
+# $encrypted | Out-File -FilePath "$PSScriptRoot\encrypted_password.txt"
+
 # Change to the script's directory
 Push-Location $PSScriptRoot
 
