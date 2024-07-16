@@ -1,7 +1,8 @@
-﻿# Ensure running as administrator
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Error "Please run this script as an Administrator!"
-    Exit
+    Write-Host "This script requires administrator privileges." -ForegroundColor Red
+    Write-Host "Please right-click on the PowerShell icon and select 'Run as administrator'." -ForegroundColor Yellow
+    Write-Host "Then navigate to the script's directory and run it again." -ForegroundColor Yellow
+    Exit 1
 }
 
 # Check if hostname ends with 'CSS'
