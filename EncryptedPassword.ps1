@@ -5,10 +5,12 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Exit 1
 }
 
-# Check if hostname ends with 'CSS'
 $hostname = $(hostname)
 if ($hostname -notmatch "CSS$") {
-    Write-Error "Hostname does not end with 'CSS'. Exiting."
+    Write-Host "Error: The hostname of this computer does not end with 'CSS'." -ForegroundColor Red
+    Write-Host "Current hostname: $hostname" -ForegroundColor Yellow
+    Write-Host "This script is designed to run only on computers with hostnames ending in 'CSS'." -ForegroundColor Yellow
+    Write-Host "Please check your computer's hostname and try again on an appropriate machine." -ForegroundColor Yellow
     Exit 7
 }
 
