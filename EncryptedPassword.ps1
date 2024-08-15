@@ -26,6 +26,28 @@ Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-TCP' -Name "UserAuthentication" -Value 1
 
+$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+$regName = "DontDisplayLastUserName"
+$desiredValue = 1
+# Function to get the current value, returns $null if the value doesn't exist
+function Get-RegistryValue {
+    Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue | 
+    Select-Object -ExpandProperty $regName
+}
+$currentValue = Get-RegistryValue
+if ($null -eq $currentValue) {
+    # If the value doesn't exist, create it
+    New-ItemProperty -Path $regPath -Name $regName -Value $desiredValue -PropertyType DWORD -Force
+    Write-Host "Created new registry value '$regName' and set it to $desiredValue"
+} elseif ($currentValue -ne $desiredValue) {
+    # If the value exists but is different, update it
+    Set-ItemProperty -Path $regPath -Name $regName -Value $desiredValue
+    Write-Host "Updated existing registry value '$regName' from $currentValue to $desiredValue"
+} else {
+    # If the value already matches what we want, do nothing
+    Write-Host "Registry value '$regName' is already set to $desiredValue. No changes made."
+}
+
 # Define encryption key and password file path
 $encryptionKey = [byte[]]@(1..32)
 $encryptedPasswordFile = "$PSScriptRoot\encrypted_password.txt"
@@ -45,7 +67,17 @@ $securePassword = ConvertTo-SecureString $encryptedPassword -Key $encryptionKey
 # Function to set user password and add to Administrators group
 function Set-UserConfig {
     param ([string]$Username)
-    Enable-LocalUser -Name $Username
+    
+    # Check if the account is disabled and enable it if necessary
+    $user = Get-LocalUser -Name $Username -ErrorAction SilentlyContinue
+    if ($user -and $user.Enabled -eq $false) {
+        Enable-LocalUser -Name $Username
+        Write-Host "$Username account was disabled. It has been enabled."
+    } elseif (-not $user) {
+        Write-Host "$Username account not found. Unable to configure."
+        return
+    }
+    
     Set-LocalUser -Name $Username -Password $securePassword -PasswordNeverExpires $true
     Add-LocalGroupMember -Group "Administrators" -Member $Username -ErrorAction SilentlyContinue
     Write-Host "$Username configured successfully."
