@@ -1,4 +1,4 @@
-# PowerShell script to manage certificates and CRLs
+# Cross-Platform PowerShell Script for Managing Certificates and CRLs
 
 # Self-elevate the script if required
 if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
@@ -113,8 +113,7 @@ function Remove-LANDeskInvDeltaFiles {
         Write-OutputAndLog "Scanning for invdelta files in $lanDeskPath" "Cyan"
 
         # Get all files including hidden and system files that contain 'invdelta'
-        $filesToRemove = Get-ChildItem -Path $lanDeskPath -Force -File | 
-                         Where-Object { $_.Name -match 'invdelta' }
+        $filesToRemove = Get-ChildItem -Path $lanDeskPath -Force | Where-Object { -not $_.PSIsContainer -and $_.Name -match 'invdelta' }
 
         if ($filesToRemove.Count -eq 0) {
             Write-OutputAndLog "No invdelta files found in the directory." "Yellow"
@@ -124,7 +123,7 @@ function Remove-LANDeskInvDeltaFiles {
             try {
                 # Remove hidden and read-only attributes
                 Write-OutputAndLog "Removing attributes from: $($file.Name)" "Yellow"
-                Set-ItemProperty -Path $file.FullName -Name Attributes -Value 'Normal'
+                Set-ItemProperty -Path $file.FullName -Name Attributes -Value ([System.IO.FileAttributes]::Normal)
 
                 # Attempt to delete each file
                 Remove-Item -Path $file.FullName -Force -ErrorAction Stop
