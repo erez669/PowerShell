@@ -1,4 +1,4 @@
-﻿# PowerShell script to manage certificates and CRLs
+# PowerShell script to manage certificates and CRLs
 
 # Self-elevate the script if required
 if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
@@ -17,8 +17,12 @@ function Write-OutputAndLog {
     Add-Content -Path $logFile -Value $Message
 }
 
-# Determine if running on Server OS and set log file name
-$isServerOS = ($env:OS -eq 'Windows_NT' -and (Get-WmiObject -Class Win32_OperatingSystem).Caption -match 'Server')
+# Determine if running on specific Server hostnames or standard OS
+$hostname = (Get-WmiObject -Class Win32_ComputerSystem).Name
+$isServerSpecific = ($hostname -eq 'IVANTIAPPSRV' -or $hostname -eq 'IVANTISRV')
+$isServerOS = ($env:OS -eq 'Windows_NT' -and (Get-WmiObject -Class Win32_OperatingSystem).Caption -match 'Server' -and $isServerSpecific)
+
+# Set log file name
 if ($isServerOS) {
     $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
     $logFile = Join-Path $scriptPath "Server OS output.txt"
@@ -139,7 +143,7 @@ function Remove-LANDeskInvDeltaFiles {
 }
 
 if ($isServerOS) {
-    # Server OS operations
+    # Server-specific hostname operations
     Write-OutputAndLog "Performing operations for Server OS..." "Cyan"
     Write-OutputAndLog "--------------------------------------" "Cyan"
     
@@ -171,11 +175,12 @@ if ($isServerOS) {
     }
 
     # Download the certificates and CRL files
-    for ($i = 0; $i -lt $urls.Count; $i++) {
-        Write-OutputAndLog "Downloading file from $($urls[$i]) to $($destinationPaths[$i])" "Cyan"
+    foreach ($url in $urls) {
+        $destinationPath = $destinationPaths[$urls.IndexOf($url)]
+        Write-OutputAndLog "Downloading file from $url to $destinationPath" "Cyan"
         $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($urls[$i], $destinationPaths[$i])
-        Write-OutputAndLog "Successfully downloaded: $($destinationPaths[$i])" "Green"
+        $webClient.DownloadFile($url, $destinationPath)
+        Write-OutputAndLog "Successfully downloaded: $destinationPath" "Green"
         Write-OutputAndLog ""
     }
 
@@ -221,7 +226,7 @@ if ($isServerOS) {
     $remotePath = "\\10.250.236.25\IvantiShare\Packages\RootCerts"
     Write-OutputAndLog "Importing certificates and CRLs from remote path: $remotePath" "Cyan"
     if (Test-Path $remotePath) {
-        $files = Get-ChildItem -Path $remotePath -File
+        $files = Get-ChildItem -Path $remotePath | Where-Object { -not $_.PSIsContainer }
         foreach ($file in $files) {
             if ($file.Extension -eq '.crt') {
                 $storeName = if ($file.Name -match 'Root') { "Root" } else { "CA" }
