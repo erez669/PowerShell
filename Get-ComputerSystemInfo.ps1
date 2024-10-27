@@ -1,6 +1,5 @@
 # Local and Remote System Information v5
-# Cross-platform (Windows 7 and above) with PowerShell v2/v5+ compatibility
-# Use CIM on modern systems and WMI for legacy systems
+# Cross-platform (Windows 7 and above) with PowerShell v2/v5+
 # Shows details of currently running PC
 # written by Erez Schwartz 27.10.24
 
