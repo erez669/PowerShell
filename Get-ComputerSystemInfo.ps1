@@ -116,7 +116,8 @@ function Get-SystemInformation {
 
         Write-Host "`nUser Information:" -ForegroundColor Green
         Write-Host "---------------------------------------" -ForegroundColor Green
-        Write-Host "Current User: $($computerSystem.UserName -or 'No Active User')"
+        $loggedOnUser = if ($computerSystem.UserName) { $computerSystem.UserName } else { "No Active User" }
+        Write-Host "Current User: $loggedOnUser"
         $lastBootTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($computerOS.LastBootUpTime)
         Write-Host "Last Reboot: $($lastBootTime.ToString("dd/MM/yyyy HH:mm:ss"))"
     }
