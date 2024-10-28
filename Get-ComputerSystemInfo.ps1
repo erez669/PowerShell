@@ -3,31 +3,48 @@
 # Shows details of currently running PC
 # written by Erez Schwartz 28.10.24
 
-function Get-DriveType {
-    param (
-        [string]$ComputerName,
-        [string]$DriveLetter
-    )
+function Get-DriveInfo {
+    param ([string]$ComputerName)
 
+    $drivesInfo = @()
     try {
-        $logicalDisk = Get-WmiObject -Class Win32_LogicalDisk -ComputerName $ComputerName -Filter "DeviceID='$($DriveLetter):'"
-        if (-not $logicalDisk) { return "HDD" }
+        $logicalDisks = Get-WmiObject -Class Win32_LogicalDisk -ComputerName $ComputerName -Filter "DriveType = 3" # Only fixed drives
 
-        $diskDrive = $logicalDisk | ForEach-Object {
-            Get-WmiObject -ComputerName $ComputerName -Query "ASSOCIATORS OF {Win32_LogicalDisk.DeviceID='$($_.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition" |
-                ForEach-Object { Get-WmiObject -ComputerName $ComputerName -Query "ASSOCIATORS OF {Win32_DiskPartition.DeviceID='$($_.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition" }
+        foreach ($logicalDisk in $logicalDisks) {
+            $diskDrive = Get-WmiObject -Query "ASSOCIATORS OF {Win32_LogicalDisk.DeviceID='$($logicalDisk.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition" -ComputerName $ComputerName |
+                ForEach-Object { Get-WmiObject -Query "ASSOCIATORS OF {Win32_DiskPartition.DeviceID='$($_.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition" -ComputerName $ComputerName }
+
+            $driveType = "HDD" # Default type
+            if ($diskDrive) {
+                # Detect NVMe or SSD based on model and PNPDeviceID
+                if ($diskDrive.PNPDeviceID -match 'NVMe' -or $diskDrive.Model -match 'NVMe') { $driveType = "NVMe" }
+                elseif ($diskDrive.Model -match 'SSD|SOLID[\s-]STATE|MZ7|850|860|870|960|970|980') { $driveType = "SSD" }
+                elseif ([string]::IsNullOrEmpty($diskDrive.PNPDeviceID) -and $diskDrive.Model -match 'SSD|SOLID[\s-]STATE|MZ7|850|860|870|960|970|980') {
+                    $driveType = "SSD" # Fallback for Windows 7 if no PNPDeviceID is available
+                }
+            }
+
+            # Clean model name and store details
+            $cleanedModel = $diskDrive.Model -replace "\s*SCSI Disk Device$|ATA\s*", ""
+            $cleanedModel = $cleanedModel -replace "^ADAT\s", "ADATA "
+            $cleanedModel = $cleanedModel -replace "\s+", " " # Remove extra spaces
+            
+            # Store drive information
+            $drivesInfo += [pscustomobject]@{
+                DriveLetter   = $logicalDisk.DeviceID
+                CapacityGB    = [math]::Round($logicalDisk.Size / 1GB, 2)
+                FreeSpaceGB   = [math]::Round($logicalDisk.FreeSpace / 1GB, 2)
+                FreeSpacePct  = [math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)
+                DriveType     = $driveType
+                Model         = $cleanedModel
+            }
         }
-
-        if (-not $diskDrive) { return "HDD" }
-
-        if ($diskDrive.PNPDeviceID -match 'NVMe' -or $diskDrive.Model -match 'NVMe') { return "NVMe" }
-        if ($diskDrive.Model.ToUpper() -match 'SSD|SOLID[\s-]STATE|NVME|PM\d{3}|SM\d{3}|MZ7|850|860|870|960|970|980') { return "SSD" }
-
-        return "HDD"
     }
     catch {
-        return "HDD"
+        Write-Host "Error retrieving drive information for $ComputerName : $_" -ForegroundColor Red
     }
+
+    return $drivesInfo
 }
 
 function Get-WindowsVersionInfo {
@@ -39,7 +56,7 @@ function Get-WindowsVersionInfo {
             $regInfo = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
             $buildNumber = if ($regInfo.CurrentBuild -and $regInfo.UBR) { "$($regInfo.CurrentBuild).$($regInfo.UBR)" } else { $regInfo.CurrentBuild }
             
-            # Correctly retrieve either DisplayVersion or ReleaseId
+            # Retrieve either DisplayVersion or ReleaseId
             $featureUpdate = if ($regInfo.DisplayVersion) { $regInfo.DisplayVersion } elseif ($regInfo.ReleaseId) { $regInfo.ReleaseId } else { "Not Available" }
         } 
         else {
@@ -51,7 +68,7 @@ function Get-WindowsVersionInfo {
                 }
                 $buildNumber = if ($buildInfo.CurrentBuild -and $buildInfo.UBR) { "$($buildInfo.CurrentBuild).$($buildInfo.UBR)" } else { $buildInfo.CurrentBuild }
                 
-                # Correctly retrieve either DisplayVersion or ReleaseId
+                # Retrieve either DisplayVersion or ReleaseId
                 $featureUpdate = if ($buildInfo.DisplayVersion) { $buildInfo.DisplayVersion } elseif ($buildInfo.ReleaseId) { $buildInfo.ReleaseId } else { "Not Available" }
             }
             catch {
@@ -85,10 +102,10 @@ function Get-SystemInformation {
         $computerBIOS = Get-WmiObject -Class Win32_BIOS -ComputerName $ComputerName
         $computerOS = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName
         $computerCPU = Get-WmiObject -Class Win32_Processor -ComputerName $ComputerName | Select-Object -First 1
-        $computerHDD = Get-WmiObject -Class Win32_LogicalDisk -ComputerName $ComputerName -Filter "DeviceID = 'C:'"
-        
         $windowsInfo = Get-WindowsVersionInfo -ComputerName $ComputerName
-        $driveType = Get-DriveType -ComputerName $ComputerName -DriveLetter "C"
+
+        # Retrieve all drives information
+        $drivesInfo = Get-DriveInfo -ComputerName $ComputerName
 
         Clear-Host
         Write-Host "System Information for: $ComputerName" -ForegroundColor Green
@@ -97,14 +114,17 @@ function Get-SystemInformation {
         Write-Host "Model: $($computerSystem.Model)"
         Write-Host "Serial Number: $($computerBIOS.SerialNumber)"
         Write-Host "CPU: $($computerCPU.Name)"
-
-        if ($computerHDD) {
-            Write-Host "HDD Capacity: $([math]::Round($computerHDD.Size / 1GB, 2)) GB"
-            Write-Host "HDD Type: $driveType"
-            Write-Host "HDD Free Space: $([math]::Round($computerHDD.FreeSpace / 1GB, 2)) GB ($([math]::Round(($computerHDD.FreeSpace / $computerHDD.Size) * 100, 2))%)"
+        
+        # Display each drive's information
+        foreach ($drive in $drivesInfo) {
+            Write-Host "`nDrive Letter: $($drive.DriveLetter)" -ForegroundColor Cyan
+            Write-Host "  Capacity: $($drive.CapacityGB) GB"
+            Write-Host "  Free Space: $($drive.FreeSpaceGB) GB ($($drive.FreeSpacePct)%)"
+            Write-Host "  Type: $($drive.DriveType)"
+            Write-Host "  Model: $($drive.Model)"
         }
 
-        Write-Host "RAM: $([math]::Round($computerSystem.TotalPhysicalMemory / 1GB, 2)) GB"
+        Write-Host "`nRAM: $([math]::Round($computerSystem.TotalPhysicalMemory / 1GB, 2)) GB"
         Write-Host "Operating System: $($computerOS.Caption)"
         Write-Host "Windows Build: $($windowsInfo.Build)"
         Write-Host "Feature Update: $($windowsInfo.FeatureUpdate)"
@@ -116,7 +136,12 @@ function Get-SystemInformation {
 
         Write-Host "`nUser Information:" -ForegroundColor Green
         Write-Host "---------------------------------------" -ForegroundColor Green
-        $loggedOnUser = if ($computerSystem.UserName) { $computerSystem.UserName } else { "No Active User" }
+        $loggedOnUser = if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
+            "$env:USERDOMAIN\$env:USERNAME"
+        } else {
+            $computerSystem.UserName
+        }
+        
         Write-Host "Current User: $loggedOnUser"
         $lastBootTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($computerOS.LastBootUpTime)
         Write-Host "Last Reboot: $($lastBootTime.ToString("dd/MM/yyyy HH:mm:ss"))"
