@@ -1,7 +1,7 @@
-# Local and Remote System Information v6
+# Local and Remote System Information v7
 # Cross-platform (Windows 7 and above) with PowerShell v2+
 # Shows details of currently running PC
-# written by Erez Schwartz 27.10.24, optimized on 28.10.24
+# written by Erez Schwartz 28.10.24
 
 function Get-DriveType {
     param (
@@ -34,43 +34,44 @@ function Get-WindowsVersionInfo {
     param([string]$ComputerName)
 
     try {
-        $osVersion = (Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName).Version
-        $majorVersion = [int]$osVersion.Split('.')[0]
-
-        if ($majorVersion -lt 10) {
-            return @{
-                "Version" = $osVersion
-                "Build" = (Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName).BuildNumber
-                "FeatureUpdate" = "Not Available (Windows 7 or older)"
-            }
-        } else {
-            $regPath = "SOFTWARE\Microsoft\Windows NT\CurrentVersion"
-            $regInfo = if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
-                # Local machine registry access
-                Get-ItemProperty -Path "HKLM:\$regPath"
-            } else {
-                # Remote registry access
-                Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-                    Get-ItemProperty -Path "HKLM:\$using:regPath"
-                }
-            }
-
+        # Local machine retrieval
+        if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
+            $os = Get-WmiObject -Class Win32_OperatingSystem
+            $regInfo = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
             $buildNumber = if ($regInfo.CurrentBuild -and $regInfo.UBR) { "$($regInfo.CurrentBuild).$($regInfo.UBR)" } else { $regInfo.CurrentBuild }
-            $featureUpdate = if ($regInfo.DisplayVersion) { 
-                $regInfo.DisplayVersion 
-            } elseif ($regInfo.ReleaseId) { 
-                $regInfo.ReleaseId 
-            } else { 
-                "Not Available" 
+            $featureUpdate = if ($regInfo.DisplayVersion) { $regInfo.DisplayVersion } elseif ($regInfo.ReleaseId) { $regInfo.ReleaseId } else { "Not Available" }
+        } 
+        else {
+            # Remote retrieval with Invoke-Command
+            $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+            $buildNumber = $featureUpdate = "Unknown"
+            try {
+                $buildInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock { 
+                    Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | 
+                    Select-Object -Property CurrentBuild, UBR, DisplayVersion, ReleaseId
+                }
+                $buildNumber = if ($buildInfo.CurrentBuild -and $buildInfo.UBR) { "$($buildInfo.CurrentBuild).$($buildInfo.UBR)" } else { $buildInfo.CurrentBuild }
+                $featureUpdate = if ($buildInfo.DisplayVersion) { $buildInfo.DisplayVersion } elseif ($buildInfo.ReleaseId) { $buildInfo.ReleaseId } else { "Not Available" }
             }
-            return @{
-                "Version" = $osVersion
-                "Build" = $buildNumber
-                "FeatureUpdate" = $featureUpdate
+            catch {
+                Write-Host "Error retrieving build information for $ComputerName : $_" -ForegroundColor Red
             }
+        }
+
+        # Interpret feature update into readable version
+        if ($featureUpdate -match '^\d{4}$') {
+            # Convert numeric ReleaseId, e.g., "2004" to "20H1"
+            $featureUpdate = if ([int]$featureUpdate -ge 1909) { $featureUpdate.Insert(2, "H") } else { $featureUpdate }
+        }
+
+        return @{
+            "Version" = $os.Version
+            "Build" = $buildNumber
+            "FeatureUpdate" = $featureUpdate
         }
     }
     catch {
+        Write-Host "Error retrieving Windows version info for $ComputerName : $_" -ForegroundColor Red
         return @{
             "Version" = "Unknown"
             "Build" = "Unknown"
