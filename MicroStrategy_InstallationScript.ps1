@@ -1,4 +1,4 @@
-﻿# Script parameters
+# Script parameters
 param
 (
     [Parameter(Mandatory=$false)]
@@ -376,6 +376,8 @@ try {
     Write-ColorOutput "==================================================" "Green"
     Write-ColorOutput "Script completed successfully!" "Green"
     Write-ColorOutput "Installation location: $installPath" "Green"
+	Write-ColorOutput "System will reboot in 15 seconds..." "Yellow"
+    Start-Process "C:\Windows\System32\shutdown.exe" -ArgumentList "-r -t 15 -f"
     Write-ColorOutput "==================================================" "Green"
     exit 0
 }
