@@ -9,6 +9,12 @@ $LogFile = Join-Path -Path $LogPath -ChildPath "WMF51_Installation_Summary.txt"
 $DismLogFile = Join-Path -Path $LogPath -ChildPath "DISM_WMF51_Install.log"
 $global:exitCode = 0  # Initialize a global variable for exit code
 
+# Get the actual .NET version from registry
+$global:netVersion = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" -ErrorAction SilentlyContinue).Version
+if (-not $global:netVersion) {
+    $global:netVersion = $PSVersionTable.CLRVersion.ToString()
+}
+
 # Ensure log directory exists
 if (-not (Test-Path -Path $LogPath)) {
     New-Item -Path $LogPath -ItemType Directory -Force | Out-Null
@@ -21,7 +27,7 @@ if (Test-Path -Path $DismLogFile) { Remove-Item -Path $DismLogFile -Force }
 # Function to write to console and log
 function Write-LogMessage {
     param(
-        [Parameter(Mandatory=$true)][string]$Message,
+        [Parameter(Mandatory=$true)][string]$Message = "No message provided",
         [ValidateSet('Information', 'Warning', 'Error', 'Success')][string]$Type = 'Information'
     )
     $timestamp = Get-Date -Format "dd-MM-yyyy HH:mm:ss"
@@ -33,6 +39,46 @@ function Write-LogMessage {
         'Error' { Write-Host $logMessage -ForegroundColor Red }
         'Success' { Write-Host $logMessage -ForegroundColor Green }
     }
+}
+
+# prerequisite .NET Framework check
+$dotNetCheckScript = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) -ChildPath "Check-DotNet.ps1"
+if (Test-Path $dotNetCheckScript) {
+    Write-LogMessage "Checking .NET Framework version..." -Type Information
+    $dotNetResult = & $dotNetCheckScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-LogMessage ".NET Framework version $global:netVersion is insufficient." -Type Error
+        Write-Host ""
+        Write-LogMessage "Attempting to install .NET Framework 4.6..." -Type Information
+        
+        # .NET Framework installation logic
+        $netFrameworkPath = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) -ChildPath "NDP46-KB3045557-x86-x64-AllOS-ENU.exe"
+        if (Test-Path $netFrameworkPath) {
+            Write-LogMessage "Installing .NET Framework 4.6..." -Type Information
+            $installArgs = "/passive /AcceptEULA /norestart"
+            $installProcess = Start-Process -FilePath $netFrameworkPath -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
+            
+            if ($installProcess.ExitCode -eq 0 -or $installProcess.ExitCode -eq 3010) {
+			Write-LogMessage ".NET Framework 4.6 installation completed. Restart recommended but skipped." -Type Success
+			$global:exitCode = 0
+		} else {
+			Write-LogMessage ".NET Framework 4.6 installation failed with code: $($installProcess.ExitCode)" -Type Error
+			$global:exitCode = $installProcess.ExitCode
+			exit $global:exitCode
+		}
+        } else {
+            Write-LogMessage ".NET Framework 4.6 installer not found at: $netFrameworkPath" -Type Error
+            $global:exitCode = 1
+            exit $global:exitCode
+        }
+    } else {
+        Write-Host ""
+        Write-LogMessage ".NET Framework version $global:netVersion is compatible" -Type Success
+        Write-Host ""
+    }
+} else {
+    Write-LogMessage ".NET Framework version check script not found" -Type Warning
+    Write-Host ""
 }
 
 # Compatibility Check Function
