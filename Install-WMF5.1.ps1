@@ -171,13 +171,17 @@ function Start-Installation {
     }
 
     if ($result.ExitCode -eq 0 -or $result.ExitCode -eq 3010) {
-        Write-LogMessage "Installation completed successfully." -Type Success
-        Write-LogMessage "System will restart in a couple of seconds..." -Type Warning
-        Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 8 /f" -WindowStyle Hidden
-        return 0  # Return 0 for successful installation
+        Write-LogMessage "Installation completed successfully (DISM exit code: $($result.ExitCode))." -Type Success
+        $global:exitCode = 0
+        Write-LogMessage "Final exit code set to $global:exitCode. System will restart in 15 seconds..." -Type Warning
+        Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 15 /f" -WindowStyle Hidden
+        Start-Sleep -Seconds 3
+        return $global:exitCode
     } else {
-        Write-LogMessage "DISM failed with exit code: $($result.ExitCode)." -Type Error
-        return $result.ExitCode
+        Write-LogMessage "Installation failed (DISM exit code: $($result.ExitCode))." -Type Error
+        $global:exitCode = $result.ExitCode
+        Write-LogMessage "Final exit code set to $global:exitCode." -Type Error
+        return $global:exitCode
     }
 }
 
