@@ -79,6 +79,24 @@ function Get-SaturdayWeekNumber {
     return -1
 }
 
+# Improved function to get the correct week number of the month
+function Get-WeekOfMonth {
+    param (
+        [DateTime]$date
+    )
+    
+    # Get the first day of the month
+    $firstDayOfMonth = Get-Date -Year $date.Year -Month $date.Month -Day 1
+    
+    # Calculate the offset to get to the first full week
+    $offset = [int]$firstDayOfMonth.DayOfWeek
+    
+    # Calculate the week number
+    $weekNum = [math]::Ceiling(($date.Day + $offset) / 7.0)
+    
+    return $weekNum
+}
+
 # Function to check if the current server belongs to the specified group
 function Test-ServerGroup {
     param (
@@ -139,7 +157,8 @@ Write-Host ("Total weeks for reboot schedule: " + $totalWeeks) -ForegroundColor 
 $weekNum = Get-SaturdayWeekNumber -date $today -saturdays $saturdays
 if ($weekNum -eq -1) {
     Write-Host "Today is not a Saturday, determining fallback week number..." -ForegroundColor Yellow
-    $weekNum = [math]::Ceiling($today.Day / 7)
+    # Using the improved week calculation
+    $weekNum = Get-WeekOfMonth -date $today
     if ($weekNum -gt $totalWeeks) {
         $weekNum = $totalWeeks
     }
@@ -150,6 +169,19 @@ Write-Host ("Week " + $weekNum + " of " + $totalWeeks) -ForegroundColor Green
 # Get the hostname of the machine
 $hostname = $env:COMPUTERNAME
 Write-Host ("Hostname: " + $hostname) -ForegroundColor Green
+
+# Display which server group is scheduled for current week
+$currentGroupMessage = "Server group scheduled for week $weekNum : "
+if ($weekNum -eq 1) {
+    $currentGroupMessage += "PL servers"
+} elseif ($weekNum -eq 2) {
+    $currentGroupMessage += "SL servers"
+} elseif ($weekNum -eq 3) {
+    $currentGroupMessage += "WL servers"
+} elseif ($weekNum -eq $totalWeeks) {
+    $currentGroupMessage += "YARPA servers"
+}
+Write-Host $currentGroupMessage -ForegroundColor Magenta
 
 # Calculate the last Saturday of the current month
 $lastSaturday = Get-LastSaturday -Year $today.Year -Month $today.Month
