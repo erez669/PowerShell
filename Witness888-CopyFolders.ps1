@@ -1,4 +1,4 @@
-﻿Clear-Host
+Clear-Host
 
 # Main script: Witness888-CopyFolders.ps1
 
@@ -21,6 +21,11 @@ $excludedFolders = @(
     "W2k12_x64",
     "W2K19x64",
     "Win10LTSC2019"
+)
+
+# Define exclusion list - files to skip
+$excludedFiles = @(
+    "sysprep_windows.wim"
 )
 
 # Function to write messages to console
@@ -106,6 +111,12 @@ try {
         foreach ($excludedFolder in $excludedFolders) {
             $roboArgs += "/XD"
             $roboArgs += "*$excludedFolder*"
+        }
+
+        # Add file exclusions
+        foreach ($excludedFile in $excludedFiles) {
+        $roboArgs += "/XF"
+        $roboArgs += $excludedFile
         }
 
         # Execute robocopy
