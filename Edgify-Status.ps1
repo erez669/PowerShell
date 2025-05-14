@@ -179,7 +179,7 @@ if (-not (Test-Path -Path $xmlPath -ErrorAction SilentlyContinue)) {
 }
 
 # Define the output CSV path (network location)
-$csvPath = "\\hdsupport\POS\Edgify_DeviceStatus.csv"
+$csvPath = "\\myserver\POS\Edgify_DeviceStatus.csv"
 
 # Get the hostname of the current device
 $hostname = $env:COMPUTERNAME
