@@ -4,6 +4,7 @@
 .DESCRIPTION
     Detects Toshiba POS model, copies BIOS tools, and applies configuration.
     Fully compatible with PowerShell v2.0 and NT AUTHORITY\SYSTEM.
+    Written by Erez Schwartz
 .NOTES
     Version: 1.6
     - Removed: Ternary operators and PS 3.0+ commands.
@@ -13,8 +14,8 @@
 #>
 
 # --- Variables ---
-$SourcePathE85 = "\\ivantiappsrv\IvantiShare\Packages\POS\BiosUpdate\Toshiba_E85_BiosTool"
-$SourcePathE86 = "\\ivantiappsrv\IvantiShare\Packages\POS\BiosUpdate\Toshiba_E86_BiosTool"
+$SourcePathE85 = "\\myserver\myshare\Packages\POS\BiosUpdate\Toshiba_E85_BiosTool"
+$SourcePathE86 = "\\myserver\myshare\Packages\POS\BiosUpdate\Toshiba_E86_BiosTool"
 $DestinationRoot = "D:\"
 $SupportedModels = @("4900E85", "4900785", "4900786", "4900E86")
 
