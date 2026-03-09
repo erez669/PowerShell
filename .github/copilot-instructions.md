@@ -1,0 +1,12 @@
+## PowerShell Scripting Rules
+- Always write PowerShell v2 compatible code (for old Operating Systems)
+- Avoid ANY features introduced in PowerShell v3 or later
+- Use Get-WmiObject instead of Get-CimInstance
+- Use New-Object PSObject instead of [PSCustomObject]@{}
+- Use Split-Path $MyInvocation.MyCommand.Path instead of $PSScriptRoot
+- Use System.Net.WebClient instead of Invoke-WebRequest
+- Use [IO.File]::ReadAllText() instead of Get-Content -Raw
+- Use -contains / -notcontains instead of -in / -notin
+- Always use full Where-Object syntax, never shorthand
+- Use separate Try/Catch blocks instead of multiple exceptions in one
+- Always write scripts that are as verbose and detailed as possible: include detailed comments on every block and line explaining what it does and why, use Write-Host or Write-Verbose to log every major step and action, include variable value logging where helpful, add clear section headers as comments, explain error handling logic in comments, and make the script self-documenting so anyone reading it understands exactly what is happening at every point
