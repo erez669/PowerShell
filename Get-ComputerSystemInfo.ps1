@@ -1,8 +1,12 @@
-# Local and Remote System Information v9
+# Local and Remote System Information v10
 # Cross-platform (Windows 7 and above) with PowerShell v2+ compatibility
 # Shows details of currently running PC
 # Written by Erez Schwartz 28.10.24
-# v9: Added friendly device model resolution (vendor-aware: Lenovo/Dell/HP/Toshiba/ASUS)
+# v9:  Added friendly device model resolution (vendor-aware: Lenovo/Dell/HP/Toshiba/ASUS)
+# v10: Fixed PS v2 compatibility - replaced [PSCustomObject] with New-Object PSObject + Add-Member
+#      [PSCustomObject] is PS v3+ only; Get-LegacyDriveInfo is called on PS v2 so must be fixed.
+#      Get-ModernDriveInfo (Get-CimInstance path) is never called on PS v2 due to routing logic,
+#      but was also updated for consistency.
 
 function Get-PowerShellVersion {
     return $PSVersionTable.PSVersion.Major
@@ -14,12 +18,13 @@ function Get-OSVersion {
     try {
         $os = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName
         $osVersion = [Version]$os.Version
-        return [PSCustomObject]@{
-            Major = $osVersion.Major
-            Minor = $osVersion.Minor
-            Build = $osVersion.Build
-            IsWindows7OrLower = ($osVersion.Major -lt 6) -or ($osVersion.Major -eq 6 -and $osVersion.Minor -le 1)
-        }
+        
+        $result = New-Object PSObject
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Major            -Value $osVersion.Major
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Minor            -Value $osVersion.Minor
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Build            -Value $osVersion.Build
+        Add-Member -InputObject $result -MemberType NoteProperty -Name IsWindows7OrLower -Value (($osVersion.Major -lt 6) -or ($osVersion.Major -eq 6 -and $osVersion.Minor -le 1))
+        return $result
     }
     catch {
         Write-Host "Error detecting OS version for $ComputerName : $_" -ForegroundColor Red
@@ -69,7 +74,8 @@ function Get-WindowsVersionInfo {
 }
 
 # ---------------------------------------------------------------------------
-# NEW: Resolve a human-readable device model name, vendor-aware
+# Resolve a human-readable device model name, vendor-aware
+# PS v2 compatible
 # ---------------------------------------------------------------------------
 function Get-FriendlyModelName {
     param(
@@ -104,7 +110,6 @@ function Get-FriendlyModelName {
 
     # --- Dell / HP / Toshiba / ASUS: Win32_ComputerSystem.Model is already friendly ---
     # Nothing extra needed; the raw model is already human-readable.
-    # We only clean it up slightly.
 
     # If we still have nothing, use the raw model as-is
     if (-not $friendly) {
@@ -122,6 +127,31 @@ function Get-FriendlyModelName {
     }
 
     return $friendly
+}
+
+# ---------------------------------------------------------------------------
+# New-DriveObject helper - PS v2 compatible replacement for [PSCustomObject]
+# ---------------------------------------------------------------------------
+function New-DriveObject {
+    param(
+        [string]$DriveLetter,
+        [double]$CapacityGB,
+        [double]$FreeSpaceGB,
+        [double]$FreeSpacePct,
+        [string]$DriveType,
+        [string]$Model,
+        [string]$SerialNumber
+    )
+
+    $obj = New-Object PSObject
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name DriveLetter  -Value $DriveLetter
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name CapacityGB   -Value $CapacityGB
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name FreeSpaceGB  -Value $FreeSpaceGB
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name FreeSpacePct -Value $FreeSpacePct
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name DriveType    -Value $DriveType
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name Model        -Value $Model
+    Add-Member -InputObject $obj -MemberType NoteProperty -Name SerialNumber -Value $SerialNumber
+    return $obj
 }
 
 function Get-LegacyDriveInfo {
@@ -174,15 +204,14 @@ function Get-LegacyDriveInfo {
                 }
                 catch { Write-Verbose "Error detecting drive type through WMI: $_" }
                 
-                $drivesInfo += [PSCustomObject]@{
-                    DriveLetter  = $logicalDisk.DeviceID
-                    CapacityGB   = [math]::Round($logicalDisk.Size / 1GB, 2)
-                    FreeSpaceGB  = [math]::Round($logicalDisk.FreeSpace / 1GB, 2)
-                    FreeSpacePct = [math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)
-                    DriveType    = $driveType
-                    Model        = $model
-                    SerialNumber = $diskDrive.SerialNumber.Trim()
-                }
+                $drivesInfo += New-DriveObject `
+                    -DriveLetter  $logicalDisk.DeviceID `
+                    -CapacityGB   ([math]::Round($logicalDisk.Size / 1GB, 2)) `
+                    -FreeSpaceGB  ([math]::Round($logicalDisk.FreeSpace / 1GB, 2)) `
+                    -FreeSpacePct ([math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)) `
+                    -DriveType    $driveType `
+                    -Model        $model `
+                    -SerialNumber $diskDrive.SerialNumber.Trim()
             }
         }
     }
@@ -198,9 +227,9 @@ function Get-ModernDriveInfo {
     
     $drivesInfo = @()
     try {
-        $physicalDisks  = Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
-        $logicalDisks   = Get-CimInstance -ClassName Win32_LogicalDisk  -ComputerName $ComputerName -Filter "DriveType = 3"
-        $partitionToDisk = Get-CimInstance -ClassName MSFT_Partition     -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
+        $physicalDisks   = Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
+        $logicalDisks    = Get-CimInstance -ClassName Win32_LogicalDisk  -ComputerName $ComputerName -Filter "DriveType = 3"
+        $partitionToDisk = Get-CimInstance -ClassName MSFT_Partition      -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
         
         foreach ($logicalDisk in $logicalDisks) {
             $partition = $partitionToDisk | Where-Object { $_.DriveLetter -eq $logicalDisk.DeviceID[0] }
@@ -221,15 +250,14 @@ function Get-ModernDriveInfo {
                         }
                     }
                     
-                    $drivesInfo += [PSCustomObject]@{
-                        DriveLetter  = $logicalDisk.DeviceID
-                        CapacityGB   = [math]::Round($logicalDisk.Size / 1GB, 2)
-                        FreeSpaceGB  = [math]::Round($logicalDisk.FreeSpace / 1GB, 2)
-                        FreeSpacePct = [math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)
-                        DriveType    = $driveType
-                        Model        = $model
-                        SerialNumber = $physicalDisk.SerialNumber.Trim()
-                    }
+                    $drivesInfo += New-DriveObject `
+                        -DriveLetter  $logicalDisk.DeviceID `
+                        -CapacityGB   ([math]::Round($logicalDisk.Size / 1GB, 2)) `
+                        -FreeSpaceGB  ([math]::Round($logicalDisk.FreeSpace / 1GB, 2)) `
+                        -FreeSpacePct ([math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)) `
+                        -DriveType    $driveType `
+                        -Model        $model `
+                        -SerialNumber $physicalDisk.SerialNumber.Trim()
                 }
             }
         }
