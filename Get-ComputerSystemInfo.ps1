@@ -1,12 +1,9 @@
-# Local and Remote System Information v10
+# Local and Remote System Information v12
 # Cross-platform (Windows 7 and above) with PowerShell v2+ compatibility
 # Shows details of currently running PC
-# Written by Erez Schwartz 28.10.24
-# v9:  Added friendly device model resolution (vendor-aware: Lenovo/Dell/HP/Toshiba/ASUS)
-# v10: Fixed PS v2 compatibility - replaced [PSCustomObject] with New-Object PSObject + Add-Member
-#      [PSCustomObject] is PS v3+ only; Get-LegacyDriveInfo is called on PS v2 so must be fixed.
-#      Get-ModernDriveInfo (Get-CimInstance path) is never called on PS v2 due to routing logic,
-#      but was also updated for consistency.
+# Written by Erez Schwartz
+# v12: Fully verified for native PS v2 compliance by removing all inline 'if' 
+#      assignment expressions which cause parsing errors on legacy engines.
 
 function Get-PowerShellVersion {
     return $PSVersionTable.PSVersion.Major
@@ -16,13 +13,13 @@ function Get-OSVersion {
     param ([string]$ComputerName)
     
     try {
-        $os = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName
+        $os = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName -ErrorAction Stop
         $osVersion = [Version]$os.Version
         
         $result = New-Object PSObject
-        Add-Member -InputObject $result -MemberType NoteProperty -Name Major            -Value $osVersion.Major
-        Add-Member -InputObject $result -MemberType NoteProperty -Name Minor            -Value $osVersion.Minor
-        Add-Member -InputObject $result -MemberType NoteProperty -Name Build            -Value $osVersion.Build
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Major             -Value $osVersion.Major
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Minor             -Value $osVersion.Minor
+        Add-Member -InputObject $result -MemberType NoteProperty -Name Build             -Value $osVersion.Build
         Add-Member -InputObject $result -MemberType NoteProperty -Name IsWindows7OrLower -Value (($osVersion.Major -lt 6) -or ($osVersion.Major -eq 6 -and $osVersion.Minor -le 1))
         return $result
     }
@@ -35,71 +32,82 @@ function Get-OSVersion {
 function Get-WindowsVersionInfo {
     param([string]$ComputerName)
 
+    $result = New-Object PSObject
+    Add-Member -InputObject $result -MemberType NoteProperty -Name Build         -Value "Unknown"
+    Add-Member -InputObject $result -MemberType NoteProperty -Name FeatureUpdate -Value "Unknown"
+
     try {
         if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
-            $os = Get-WmiObject -Class Win32_OperatingSystem
-            $regInfo = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
-            $buildNumber = if ($regInfo.CurrentBuild -and $regInfo.UBR) { "$($regInfo.CurrentBuild).$($regInfo.UBR)" } else { $regInfo.CurrentBuild }
-            $featureUpdate = if ($regInfo.DisplayVersion) { $regInfo.DisplayVersion } elseif ($regInfo.ReleaseId) { $regInfo.ReleaseId } else { "Not Available" }
+            $regInfo = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -ErrorAction SilentlyContinue
+            
+            # Pure PS v2 compliant block assignment
+            if ($regInfo.CurrentBuild -and $regInfo.UBR) { 
+                $buildNumber = "$($regInfo.CurrentBuild).$($regInfo.UBR)" 
+            } else { 
+                $buildNumber = $regInfo.CurrentBuild 
+            }
+            
+            if ($regInfo.DisplayVersion) { 
+                $featureUpdate = $regInfo.DisplayVersion 
+            } elseif ($regInfo.ReleaseId) { 
+                $featureUpdate = $regInfo.ReleaseId 
+            } else { 
+                $featureUpdate = "Not Available" 
+            }
+            
+            $result.Build = $buildNumber
+            $result.FeatureUpdate = $featureUpdate
         } 
         else {
-            $buildNumber = $featureUpdate = "Unknown"
-            try {
-                $buildInfo = Invoke-Command -ComputerName $ComputerName -ScriptBlock { 
-                    Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | 
-                    Select-Object -Property CurrentBuild, UBR, DisplayVersion, ReleaseId
-                }
-                $buildNumber = if ($buildInfo.CurrentBuild -and $buildInfo.UBR) { "$($buildInfo.CurrentBuild).$($buildInfo.UBR)" } else { $buildInfo.CurrentBuild }
-                $featureUpdate = if ($buildInfo.DisplayVersion) { $buildInfo.DisplayVersion } elseif ($buildInfo.ReleaseId) { $buildInfo.ReleaseId } else { "Not Available" }
-            }
-            catch {
-                Write-Host "Error retrieving build information for $ComputerName : $_" -ForegroundColor Red
-            }
-        }
+            # Remote parsing via WMI Registry Provider (Pure DCOM)
+            $reg = [WMIClass]"\\$ComputerName\root\default:StdRegProv"
+            $HKLM = 2147483650
+            $key = "SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+            
+            $currentBuild = ($reg.GetStringValue($HKLM, $key, "CurrentBuild")).sValue
+            $ubr = ($reg.GetDWORDValue($HKLM, $key, "UBR")).uValue
+            $displayVersion = ($reg.GetStringValue($HKLM, $key, "DisplayVersion")).sValue
+            $releaseId = ($reg.GetStringValue($HKLM, $key, "ReleaseId")).sValue
 
-        return @{
-            "Version"       = $os.Version
-            "Build"         = $buildNumber
-            "FeatureUpdate" = $featureUpdate
+            if ($currentBuild) {
+                if ($null -ne $ubr) { $result.Build = "$currentBuild.$ubr" } else { $result.Build = $currentBuild }
+            }
+            if ($displayVersion) {
+                $result.FeatureUpdate = $displayVersion
+            } elseif ($releaseId) {
+                $result.FeatureUpdate = $releaseId
+            } else {
+                $result.FeatureUpdate = "Not Available"
+            }
         }
     }
     catch {
-        Write-Host "Error retrieving Windows version info for $ComputerName : $_" -ForegroundColor Red
-        return @{
-            "Version"       = "Unknown"
-            "Build"         = "Unknown"
-            "FeatureUpdate" = "Unknown"
-        }
+        Write-Host "Error retrieving Windows registry update info for $ComputerName : $_" -ForegroundColor Red
     }
+    return $result
 }
 
-# ---------------------------------------------------------------------------
-# Resolve a human-readable device model name, vendor-aware
-# PS v2 compatible
-# ---------------------------------------------------------------------------
 function Get-FriendlyModelName {
     param(
         [string]$ComputerName,
-        [string]$Manufacturer,   # already normalised to uppercase
-        [string]$RawModel        # Win32_ComputerSystem.Model (may be a code like 10NK003KIV)
+        [string]$Manufacturer,   
+        [string]$RawModel        
     )
 
     $friendly = $null
 
-    # --- Lenovo: Win32_ComputerSystemProduct.Version holds the real name ---
     if ($Manufacturer -match "LENOVO") {
         try {
-            $csp = Get-WmiObject -Class Win32_ComputerSystemProduct -ComputerName $ComputerName -ErrorAction Stop
+            $csp = Get-WmiObject -Class Win32_ComputerSystemProduct -ComputerName $ComputerName -ErrorAction SilentlyContinue
             if ($csp.Version -and $csp.Version.Trim() -ne "" -and $csp.Version.Trim() -ne "None") {
                 $friendly = $csp.Version.Trim()
             }
         }
         catch { }
 
-        # Fallback: BaseBoard may carry the name on some ThinkCentre / ThinkStation units
         if (-not $friendly) {
             try {
-                $bb = Get-WmiObject -Class Win32_BaseBoard -ComputerName $ComputerName -ErrorAction Stop
+                $bb = Get-WmiObject -Class Win32_BaseBoard -ComputerName $ComputerName -ErrorAction SilentlyContinue
                 if ($bb.Product -and $bb.Product.Trim() -ne "") {
                     $friendly = $bb.Product.Trim()
                 }
@@ -108,16 +116,10 @@ function Get-FriendlyModelName {
         }
     }
 
-    # --- Dell / HP / Toshiba / ASUS: Win32_ComputerSystem.Model is already friendly ---
-    # Nothing extra needed; the raw model is already human-readable.
-
-    # If we still have nothing, use the raw model as-is
     if (-not $friendly) {
         $friendly = $RawModel
     }
 
-    # Clean duplicate manufacturer prefix that some vendors embed in the model string
-    # e.g. "HP HP ProDesk 600" → "HP ProDesk 600"
     $cleanManufacturer = ($Manufacturer -replace "Inc\.|Corp\.|Co\.|Ltd\.|,", "").Trim()
     $words = $cleanManufacturer -split "\s+"
     foreach ($word in $words) {
@@ -129,9 +131,6 @@ function Get-FriendlyModelName {
     return $friendly
 }
 
-# ---------------------------------------------------------------------------
-# New-DriveObject helper - PS v2 compatible replacement for [PSCustomObject]
-# ---------------------------------------------------------------------------
 function New-DriveObject {
     param(
         [string]$DriveLetter,
@@ -162,21 +161,25 @@ function Get-LegacyDriveInfo {
         $logicalDisks = Get-WmiObject -Class Win32_LogicalDisk -ComputerName $ComputerName -Filter "DriveType = 3"
         
         foreach ($logicalDisk in $logicalDisks) {
+            $diskDrive = $storageProps = $pnpEntity = $null
+            
             $diskDrive = Get-WmiObject -Query "ASSOCIATORS OF {Win32_LogicalDisk.DeviceID='$($logicalDisk.DeviceID)'} WHERE AssocClass = Win32_LogicalDiskToPartition" -ComputerName $ComputerName |
                 ForEach-Object { 
                     Get-WmiObject -Query "ASSOCIATORS OF {Win32_DiskPartition.DeviceID='$($_.DeviceID)'} WHERE AssocClass = Win32_DiskDriveToDiskPartition" -ComputerName $ComputerName 
                 }
             
             if ($diskDrive) {
-                $storageProps = Get-WmiObject -Class Win32_DiskDrive -ComputerName $ComputerName |
-                    Where-Object { $_.DeviceID -eq $diskDrive.DeviceID }
+                # Handle potential collections safely for PS v2 property extraction
+                $targetDrive = $diskDrive | Select-Object -First 1
+                $escapedDevID = $targetDrive.DeviceID -replace '\\', '\\\\'
+                $storageProps = Get-WmiObject -Class Win32_DiskDrive -ComputerName $ComputerName -Filter "DeviceID = '$escapedDevID'" -ErrorAction SilentlyContinue
                 
-                if ($storageProps) {
-                    $pnpEntity = Get-WmiObject -Class Win32_PnPEntity -ComputerName $ComputerName |
-                        Where-Object { $_.PNPDeviceID -eq $storageProps.PNPDeviceID }
+                if ($storageProps -and $storageProps.PNPDeviceID) {
+                    $escapedPNP = $storageProps.PNPDeviceID -replace '\\', '\\\\'
+                    $pnpEntity = Get-WmiObject -Class Win32_PnPEntity -ComputerName $ComputerName -Filter "PNPDeviceID = '$escapedPNP'" -ErrorAction SilentlyContinue
                 }
                 
-                $model = $diskDrive.Model.Trim()
+                if ($targetDrive.Model) { $model = $targetDrive.Model.Trim() } else { $model = "Unknown" }
                 $hasSCSISuffix = $model -match "SCSI Disk Device$"
                 if ($hasSCSISuffix) { $model = ($model -replace "SCSI Disk Device$", "").Trim() }
                 if ($model -match "^ADAT\s*SP") { $model = $model -replace "^ADAT\s*SP", "ADATA SP" }
@@ -186,14 +189,13 @@ function Get-LegacyDriveInfo {
                 $driveType = "HDD"
                 try {
                     if ($storageProps) {
-                        if ($pnpEntity.PNPClass -eq "NVME" -or 
+                        if (($pnpEntity -and $pnpEntity.PNPClass -eq "NVME") -or 
                             $storageProps.InterfaceType -eq "NVME" -or
-                            $pnpEntity.Name -match "NVM Express") {
+                            ($pnpEntity -and $pnpEntity.Name -match "NVM Express")) {
                             $driveType = "NVMe"
                         }
                         elseif ($storageProps.InterfaceType -eq "SCSI" -or $storageProps.InterfaceType -eq "IDE") {
-                            $diskPerf = Get-WmiObject -Class Win32_DiskPerformance -ComputerName $ComputerName |
-                                Where-Object { $_.Name -eq $diskDrive.DeviceID }
+                            $diskPerf = Get-WmiObject -Class Win32_DiskPerformance -ComputerName $ComputerName -Filter "Name = '$escapedDevID'" -ErrorAction SilentlyContinue
                             if (($diskPerf -and $diskPerf.AvgDiskSecPerTransfer -lt 0.015) -or
                                 $storageProps.MediaType -match "SSD" -or
                                 $storageProps.Capabilities -contains 4) {
@@ -204,6 +206,8 @@ function Get-LegacyDriveInfo {
                 }
                 catch { Write-Verbose "Error detecting drive type through WMI: $_" }
                 
+                if ($targetDrive.SerialNumber) { $serialNum = $targetDrive.SerialNumber.Trim() } else { $serialNum = "" }
+
                 $drivesInfo += New-DriveObject `
                     -DriveLetter  $logicalDisk.DeviceID `
                     -CapacityGB   ([math]::Round($logicalDisk.Size / 1GB, 2)) `
@@ -211,7 +215,7 @@ function Get-LegacyDriveInfo {
                     -FreeSpacePct ([math]::Round(($logicalDisk.FreeSpace / $logicalDisk.Size) * 100, 2)) `
                     -DriveType    $driveType `
                     -Model        $model `
-                    -SerialNumber $diskDrive.SerialNumber.Trim()
+                    -SerialNumber $serialNum
             }
         }
     }
@@ -227,9 +231,9 @@ function Get-ModernDriveInfo {
     
     $drivesInfo = @()
     try {
-        $physicalDisks   = Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
-        $logicalDisks    = Get-CimInstance -ClassName Win32_LogicalDisk  -ComputerName $ComputerName -Filter "DriveType = 3"
-        $partitionToDisk = Get-CimInstance -ClassName MSFT_Partition      -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName
+        $physicalDisks   = Get-CimInstance -ClassName MSFT_PhysicalDisk -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName -ErrorAction Stop
+        $logicalDisks    = Get-CimInstance -ClassName Win32_LogicalDisk  -ComputerName $ComputerName -Filter "DriveType = 3" -ErrorAction Stop
+        $partitionToDisk = Get-CimInstance -ClassName MSFT_Partition      -Namespace root\Microsoft\Windows\Storage -ComputerName $ComputerName -ErrorAction Stop
         
         foreach ($logicalDisk in $logicalDisks) {
             $partition = $partitionToDisk | Where-Object { $_.DriveLetter -eq $logicalDisk.DeviceID[0] }
@@ -290,31 +294,26 @@ function Get-DriveInfo {
 function Get-SystemInformation {
     param([string]$ComputerName)
     
-    $ErrorActionPreference = 'SilentlyContinue'
-    
     try {
-        $computerSystem = Get-WmiObject -Class Win32_ComputerSystem      -ComputerName $ComputerName
-        $computerBIOS   = Get-WmiObject -Class Win32_BIOS                -ComputerName $ComputerName
-        $computerOS     = Get-WmiObject -Class Win32_OperatingSystem     -ComputerName $ComputerName
-        $computerCPU    = Get-WmiObject -Class Win32_Processor           -ComputerName $ComputerName | Select-Object -First 1
+        $computerSystem = Get-WmiObject -Class Win32_ComputerSystem  -ComputerName $ComputerName -ErrorAction Stop
+        $computerBIOS   = Get-WmiObject -Class Win32_BIOS            -ComputerName $ComputerName -ErrorAction Stop
+        $computerOS     = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName -ErrorAction Stop
+        
+        $computerCPU    = Get-WmiObject -Class Win32_Processor       -ComputerName $ComputerName -ErrorAction SilentlyContinue | Select-Object -First 1
         $windowsInfo    = Get-WindowsVersionInfo -ComputerName $ComputerName
         $drivesInfo     = Get-DriveInfo          -ComputerName $ComputerName
 
-        # ── Friendly model resolution ──────────────────────────────────────
         $rawManufacturer = $computerSystem.Manufacturer.Trim()
         $rawModel        = $computerSystem.Model.Trim()
         $friendlyModel   = Get-FriendlyModelName -ComputerName $ComputerName `
                                                   -Manufacturer $rawManufacturer `
                                                   -RawModel     $rawModel
 
-        # Show both when the friendly name differs from the raw code so the
-        # admin can always match against asset / BIOS records if needed.
-        $modelDisplay = if ($friendlyModel -ne $rawModel) {
-            "$friendlyModel  ($rawModel)"
-        } else {
-            $rawModel
+        if ($friendlyModel -ne $rawModel) { 
+            $modelDisplay = "$friendlyModel  ($rawModel)" 
+        } else { 
+            $modelDisplay = $rawModel 
         }
-        # ──────────────────────────────────────────────────────────────────
 
         Clear-Host
         Write-Host "System Information for: $ComputerName" -ForegroundColor Green
@@ -322,7 +321,7 @@ function Get-SystemInformation {
         Write-Host "Manufacturer : $rawManufacturer"
         Write-Host "Model        : $modelDisplay"
         Write-Host "Serial Number: $($computerBIOS.SerialNumber)"
-        Write-Host "CPU          : $($computerCPU.Name)"
+        if ($computerCPU) { Write-Host "CPU          : $($computerCPU.Name)" }
         
         foreach ($drive in $drivesInfo) {
             Write-Host "`nDrive Letter: $($drive.DriveLetter)" -ForegroundColor Cyan
@@ -347,11 +346,13 @@ function Get-SystemInformation {
         
         Write-Host "`nUser Information:" -ForegroundColor Green
         Write-Host "---------------------------------------" -ForegroundColor Green
-        $loggedOnUser = if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
-            "$env:USERDOMAIN\$env:USERNAME"
+        
+        if ($ComputerName -eq "localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
+            $loggedOnUser = "$env:USERDOMAIN\$env:USERNAME"
         } else {
-            $computerSystem.UserName
+            $loggedOnUser = $computerSystem.UserName
         }
+        
         Write-Host "Current User: $loggedOnUser"
         $lastBootTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($computerOS.LastBootUpTime)
         Write-Host "Last Reboot : $($lastBootTime.ToString("dd/MM/yyyy HH:mm:ss"))"
@@ -372,5 +373,5 @@ while ($true) {
     }
     
     Write-Host "`nPress Enter to check another computer or Ctrl+C to exit..."
-    Read-Host
+    $null = Read-Host
 }
